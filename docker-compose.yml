@@ -1,0 +1,14 @@
+services:
+  postgress:
+    image: postgres:17
+    container_name: medassistant-db
+    environment:
+      POSTGRES_DB: medassistant
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - medassistant-data:/var/lib/postgresql/data
+volumes:
+  medassistant-data:

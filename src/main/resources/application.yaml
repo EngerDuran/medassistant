@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: medassistant
+  ai:
+    google:
+      genai:
+        api-key: ${GOOGLE_AI_API_KEY}
+        chat:
+          options:
+            model: gemini-3.1-flash-lite
+  datasource:
+    url: jdbc:postgresql://localhost:5432/medassistant
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
