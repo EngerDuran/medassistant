@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 
 
-@Component
+//@Component
 @RequiredArgsConstructor
 public class TestChatClient implements CommandLineRunner {
 
