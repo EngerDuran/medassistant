@@ -1,19 +1,25 @@
 package com.example.medassistant.chat;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
 @RestController
 @RequestMapping("/api/v1/chat")
-@RequiredArgsConstructor
 public class ChatController {
 
-    private final ChatClient chatClient;
+    private final ChatClient geminiClient;
+    private final ChatClient ollamaClient;
+
+    // Inyección de dependencias con @Qualifier: resuelve la ambigüedad indicando
+    // a Spring qué bean concreto inyectar cuando existen varias implementaciones de ChatClient.
+    public ChatController(
+                     @Qualifier("geminiClient") ChatClient geminiClient,
+                     @Qualifier("ollamaClient") ChatClient ollamaClient) {
+        this.geminiClient = geminiClient;
+        this.ollamaClient = ollamaClient;
+    }
 
     /**
      * Endpoint síncrono y bloqueante.
@@ -21,8 +27,11 @@ public class ChatController {
      */
 
     @PostMapping
-    public String chat( @RequestBody String prompt) {
-        return chatClient
+    public String chat(
+            @RequestBody String prompt,
+            @RequestParam(defaultValue = "gemini") String model
+    ) {
+        return resolveCliente(model)
                 .prompt(prompt).call().content();
     }
 
@@ -33,8 +42,16 @@ public class ChatController {
      */
 
     @PostMapping (value = "/stream", produces = "text/event-stream; charset=UTF-8")
-    public Flux<String> chatStream(@RequestBody String prompt) {
-        return chatClient
+    public Flux<String> chatStream(
+            @RequestBody String prompt,
+            @RequestParam(defaultValue = "gemini") String model
+    ) {
+        return resolveCliente(model)
                 .prompt(prompt).stream().content();
+    }
+    // usa el cliente de IA adecuado según el parámetro recibido en la petición,
+    // usando Gemini por defecto.
+    private ChatClient resolveCliente(String model){
+        return "ollama".equalsIgnoreCase(model) ? ollamaClient : geminiClient;
     }
 }
