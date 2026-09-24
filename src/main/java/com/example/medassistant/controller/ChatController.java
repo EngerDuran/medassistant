@@ -40,4 +40,10 @@ public class ChatController {
         return assistantService.chatStream(request.prompt(), request.model());
     }
 
+    @PostMapping("/explain")
+    public  ResponseEntity<String> explainCondition(@Valid @RequestBody ChatRequest request) {
+        return  ResponseEntity.ok(assistantService.explainCondition(request.prompt(), request.model()));
+    }
+
+
 }
