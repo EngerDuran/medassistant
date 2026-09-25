@@ -49,9 +49,15 @@ public class ChatController {
 
 
     //Endpoint para analizar los síntomas descritos.
-    @PostMapping("symptoms")
+    @PostMapping("/symptoms")
     public ResponseEntity<String> analyzeSymptoms(@Valid @RequestBody ChatRequest request) {
         return ResponseEntity.ok(assistantService.analyzeSymptoms(request.prompt(), request.model()));
+    }
+
+    //Endpoint para diagnosticar con razonamiento.
+    @PostMapping("/diagnose")
+    public ResponseEntity<String> diagnoseWithReasoning(@Valid @RequestBody ChatRequest request) {
+        return ResponseEntity.ok(assistantService.diagnoseWithReasoning(request.prompt(), request.model()));
     }
 
 

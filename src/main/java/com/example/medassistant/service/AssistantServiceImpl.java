@@ -24,13 +24,19 @@ public class AssistantServiceImpl implements AssistantService {
     @Value("classpath:/prompts/symptom-analysis.st")
     private Resource symptomAnalysisPrompt;
 
+    @Value("classpath:/prompts/diagnosis-cot.st")
+    private Resource diagnosisCotResource;
+
     private PromptTemplate explainConditionTemplate;
     
     private PromptTemplate symptomAnalysisTemplate;
 
+    private PromptTemplate diagnosisCotTemplate;
+
     // Inicializa el template de prompt tras completar la inyección de dependencias (@Value)
     @PostConstruct
     void init() {
+        diagnosisCotTemplate = new PromptTemplate(diagnosisCotResource);
         symptomAnalysisTemplate = new  PromptTemplate(symptomAnalysisPrompt);
         explainConditionTemplate = new PromptTemplate(explainConditionPrompt);
     }
@@ -90,16 +96,28 @@ public class AssistantServiceImpl implements AssistantService {
      * sin emitir diagnósticos definitivos.
      */
     @Override
-    public String analyzeSymptoms(String simptoms, String model) {
-            log.info("Análisis de síntomas: {}, modelo: {}", simptoms, model);
+    public String analyzeSymptoms(String symptoms, String model) {
+            log.info("Análisis de síntomas: {}, modelo: {}", symptoms, model);
 
-            String message = symptomAnalysisTemplate.render(Map.of("sintomas", simptoms));
+            String message = symptomAnalysisTemplate.render(Map.of("sintomas", symptoms));
 
             return resolveCliente(model)
                     .prompt(message)
                     .call()
                     .content();
         }
+
+    @Override
+    public String diagnoseWithReasoning(String symptoms, String model) {
+        log.info("Diagnostico CoT- modelo: {}",model);
+
+        String message = diagnosisCotTemplate.render(Map.of("sintomas", symptoms));
+
+        return resolveCliente(model)
+                .prompt(message)
+                .call()
+                .content();
+    }
 
 
     // usa el cliente de IA adecuado según el parámetro recibido en la petición,
