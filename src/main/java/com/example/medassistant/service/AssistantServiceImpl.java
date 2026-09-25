@@ -21,11 +21,17 @@ public class AssistantServiceImpl implements AssistantService {
     @Value("classpath:/prompts/explain-condition.st")
     private Resource explainConditionPrompt;
 
+    @Value("classpath:/prompts/symptom-analysis.st")
+    private Resource symptomAnalysisPrompt;
+
     private PromptTemplate explainConditionTemplate;
+    
+    private PromptTemplate symptomAnalysisTemplate;
 
     // Inicializa el template de prompt tras completar la inyección de dependencias (@Value)
     @PostConstruct
     void init() {
+        symptomAnalysisTemplate = new  PromptTemplate(symptomAnalysisPrompt);
         explainConditionTemplate = new PromptTemplate(explainConditionPrompt);
     }
 
@@ -77,6 +83,24 @@ public class AssistantServiceImpl implements AssistantService {
                 .call()
                 .content();
     }
+
+    /**
+     * Evalúa los síntomas descritos inyectándolos en la plantilla symptom-analysis.st.
+     * Estructura el prompt para guiar al LLM hacia un triaje preliminar responsable
+     * sin emitir diagnósticos definitivos.
+     */
+    @Override
+    public String analyzeSymptoms(String simptoms, String model) {
+            log.info("Análisis de síntomas: {}, modelo: {}", simptoms, model);
+
+            String message = symptomAnalysisTemplate.render(Map.of("sintomas", simptoms));
+
+            return resolveCliente(model)
+                    .prompt(message)
+                    .call()
+                    .content();
+        }
+
 
     // usa el cliente de IA adecuado según el parámetro recibido en la petición,
     // usando Gemini por defecto.
