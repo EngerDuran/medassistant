@@ -40,9 +40,18 @@ public class ChatController {
         return assistantService.chatStream(request.prompt(), request.model());
     }
 
+
+    //Endpoint para explicar una condición médica.
     @PostMapping("/explain")
     public  ResponseEntity<String> explainCondition(@Valid @RequestBody ChatRequest request) {
         return  ResponseEntity.ok(assistantService.explainCondition(request.prompt(), request.model()));
+    }
+
+
+    //Endpoint para analizar los síntomas descritos.
+    @PostMapping("symptoms")
+    public ResponseEntity<String> analyzeSymptoms(@Valid @RequestBody ChatRequest request) {
+        return ResponseEntity.ok(assistantService.analyzeSymptoms(request.prompt(), request.model()));
     }
 
 
