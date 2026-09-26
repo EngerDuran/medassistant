@@ -1,4 +1,7 @@
 package com.example.medassistant.service;
+
+import com.example.medassistant.config.ClientResolver;
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -9,13 +12,14 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import jakarta.annotation.PostConstruct;
+
 import java.util.Map;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class AssistantServiceImpl implements AssistantService {
-    private final ChatClient geminiClient;
-    private final ChatClient ollamaClient;
+    private final ClientResolver clientResolver;
 
     // Carga de la plantilla externa desde el classpath para desacoplar el prompt del código Java
     @Value("classpath:/prompts/explain-condition.st")
@@ -31,7 +35,7 @@ public class AssistantServiceImpl implements AssistantService {
     private Resource consultationResource;
 
     private PromptTemplate explainConditionTemplate;
-    
+
     private PromptTemplate symptomAnalysisTemplate;
 
     private PromptTemplate diagnosisCotTemplate;
@@ -43,20 +47,9 @@ public class AssistantServiceImpl implements AssistantService {
     void init() {
         consultationTemplate = new PromptTemplate(consultationResource);
         diagnosisCotTemplate = new PromptTemplate(diagnosisCotResource);
-        symptomAnalysisTemplate = new  PromptTemplate(symptomAnalysisPrompt);
+        symptomAnalysisTemplate = new PromptTemplate(symptomAnalysisPrompt);
         explainConditionTemplate = new PromptTemplate(explainConditionPrompt);
 
-    }
-
-    // Inyección de dependencias con @Qualifier: resuelve la ambigüedad indicando
-    // a Spring qué bean concreto inyectar cuando existen varias implementaciones de ChatClient.
-    public AssistantServiceImpl(
-            @Qualifier("geminiClient") ChatClient geminiClient,
-            @Qualifier("ollamaClient") ChatClient ollamaClient
-
-    ) {
-        this.geminiClient = geminiClient;
-        this.ollamaClient = ollamaClient;
     }
 
     /**
@@ -69,7 +62,7 @@ public class AssistantServiceImpl implements AssistantService {
         log.info("Chat request - modelo: {} ", model);
 
 
-        return resolveCliente(model)
+        return clientResolver.resolve(model)
                 .prompt(prompt).call().content();
     }
 
@@ -77,7 +70,7 @@ public class AssistantServiceImpl implements AssistantService {
     public Flux<String> chatStream(String prompt, String model) {
         log.info("Stream request - modelo: {} ", model);
 
-        return resolveCliente(model)
+        return clientResolver.resolve(model)
                 .prompt(prompt)
                 .stream()
                 .content();
@@ -91,7 +84,7 @@ public class AssistantServiceImpl implements AssistantService {
 
         String message = explainConditionTemplate.render(Map.of("condition", condition));
 
-        return resolveCliente(model)
+        return clientResolver.resolve(model)
                 .prompt(message)
                 .call()
                 .content();
@@ -104,23 +97,23 @@ public class AssistantServiceImpl implements AssistantService {
      */
     @Override
     public String analyzeSymptoms(String symptoms, String model) {
-            log.info("Análisis de síntomas: {}, modelo: {}", symptoms, model);
+        log.info("Análisis de síntomas: {}, modelo: {}", symptoms, model);
 
-            String message = symptomAnalysisTemplate.render(Map.of("sintomas", symptoms));
+        String message = symptomAnalysisTemplate.render(Map.of("sintomas", symptoms));
 
-            return resolveCliente(model)
-                    .prompt(message)
-                    .call()
-                    .content();
-        }
+        return clientResolver.resolve(model)
+                .prompt(message)
+                .call()
+                .content();
+    }
 
     @Override
     public String diagnoseWithReasoning(String symptoms, String model) {
-        log.info("Diagnostico CoT- modelo: {}",model);
+        log.info("Diagnostico CoT- modelo: {}", model);
 
         String message = diagnosisCotTemplate.render(Map.of("sintomas", symptoms));
 
-        return resolveCliente(model)
+        return clientResolver.resolve(model)
                 .prompt(message)
                 .call()
                 .content();
@@ -132,17 +125,10 @@ public class AssistantServiceImpl implements AssistantService {
 
         String message = consultationTemplate.render(Map.of("consulta", query));
 
-        return resolveCliente(model)
+        return clientResolver.resolve(model)
                 .prompt(message)
                 .call()
                 .content();
-    }
-
-
-    // usa el cliente de IA adecuado según el parámetro recibido en la petición,
-    // usando Gemini por defecto.
-    private ChatClient resolveCliente(String model){
-        return "ollama".equalsIgnoreCase(model) ? ollamaClient : geminiClient;
     }
 }
 
