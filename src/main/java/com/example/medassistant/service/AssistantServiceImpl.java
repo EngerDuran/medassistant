@@ -27,18 +27,25 @@ public class AssistantServiceImpl implements AssistantService {
     @Value("classpath:/prompts/diagnosis-cot.st")
     private Resource diagnosisCotResource;
 
+    @Value("classpath:/prompts/consultation.st")
+    private Resource consultationResource;
+
     private PromptTemplate explainConditionTemplate;
     
     private PromptTemplate symptomAnalysisTemplate;
 
     private PromptTemplate diagnosisCotTemplate;
 
+    private PromptTemplate consultationTemplate;
+
     // Inicializa el template de prompt tras completar la inyección de dependencias (@Value)
     @PostConstruct
     void init() {
+        consultationTemplate = new PromptTemplate(consultationResource);
         diagnosisCotTemplate = new PromptTemplate(diagnosisCotResource);
         symptomAnalysisTemplate = new  PromptTemplate(symptomAnalysisPrompt);
         explainConditionTemplate = new PromptTemplate(explainConditionPrompt);
+
     }
 
     // Inyección de dependencias con @Qualifier: resuelve la ambigüedad indicando
@@ -112,6 +119,18 @@ public class AssistantServiceImpl implements AssistantService {
         log.info("Diagnostico CoT- modelo: {}",model);
 
         String message = diagnosisCotTemplate.render(Map.of("sintomas", symptoms));
+
+        return resolveCliente(model)
+                .prompt(message)
+                .call()
+                .content();
+    }
+
+    @Override
+    public String consult(String query, String model) {
+        log.info("Consulta médica - modelo: {} ", model);
+
+        String message = consultationTemplate.render(Map.of("consulta", query));
 
         return resolveCliente(model)
                 .prompt(message)
