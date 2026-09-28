@@ -4,7 +4,10 @@ import com.example.medassistant.config.ClientResolver;
 import com.example.medassistant.dto.analysis.ConditionSummary;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @Slf4j
@@ -28,5 +31,23 @@ public class AnalysisServiceImpl implements  AnalysisService {
                 .user("Proporciona un resumen médico educativo sobre: " + condition)
                 .call()
                 .entity(ConditionSummary.class);
+    }
+
+    /**
+     * Identifica y clasifica las condiciones clínicas más probables basadas en síntomas.
+     * Utiliza ParameterizedTypeReference para preservar el tipo genérico List<ConditionSummary>
+     * en runtime y permitir a Spring AI deserializar
+     * un array JSON directamente en una colección fuertemente tipada.
+     */
+    @Override
+    public List<ConditionSummary> ListRelatedConditions(String symptoms, String model) {
+        log.info("Listado de condiciones relacionadas - modelo: {} ", model);
+        return clientResolver.resolve(model)
+                .prompt()
+                .user("Pasa en lista las 3 condiciones médicas más probables " +
+                                "para estos síntomas: " + symptoms
+                                )
+                .call()
+                .entity(new ParameterizedTypeReference<>() {});
     }
 }
