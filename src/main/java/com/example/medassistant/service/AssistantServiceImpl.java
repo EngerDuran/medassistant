@@ -34,6 +34,7 @@ public class AssistantServiceImpl implements AssistantService {
     @Value("classpath:/prompts/consultation.st")
     private Resource consultationResource;
 
+
     private PromptTemplate explainConditionTemplate;
 
     private PromptTemplate symptomAnalysisTemplate;
@@ -49,7 +50,6 @@ public class AssistantServiceImpl implements AssistantService {
         diagnosisCotTemplate = new PromptTemplate(diagnosisCotResource);
         symptomAnalysisTemplate = new PromptTemplate(symptomAnalysisPrompt);
         explainConditionTemplate = new PromptTemplate(explainConditionPrompt);
-
     }
 
     /**
@@ -130,6 +130,9 @@ public class AssistantServiceImpl implements AssistantService {
                 .call()
                 .content();
     }
+
+
+
 }
 
 

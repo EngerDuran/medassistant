@@ -3,12 +3,17 @@ package com.example.medassistant.service;
 import com.example.medassistant.config.ClientResolver;
 import com.example.medassistant.dto.analysis.ConditionSummary;
 import com.example.medassistant.dto.analysis.SymptomAnalysis;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.prompt.PromptTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -16,6 +21,16 @@ import java.util.List;
 public class AnalysisServiceImpl implements  AnalysisService {
 
     private final ClientResolver clientResolver;
+
+    private PromptTemplate structuredAnalysisTemplate;
+
+    @Value("classpath:/prompts/structured-analysis.st")
+    private Resource structuredAnalysisResource;
+
+    @PostConstruct
+    void init() {
+        structuredAnalysisTemplate = new PromptTemplate(structuredAnalysisResource);
+    }
 
     /**
      * Solicita al LLM un análisis clínico educativo y mapea directamente
@@ -56,13 +71,14 @@ public class AnalysisServiceImpl implements  AnalysisService {
     public SymptomAnalysis analyzeSymptoms(String symptoms, String model) {
         log.info("Análisis de síntomas - modelo: {}", model);
 
+        String message = structuredAnalysisTemplate.render(
+                Map.of("sintomas", symptoms)
+        );
+
         return clientResolver.resolve(model)
                 .prompt()
-                .user("Analiza los siguientes síntomas de un paciente y " +
-                        "proporciona un análisis médico educativo completo: " + symptoms)
+                .user(message)
                 .call()
                 .entity(SymptomAnalysis.class);
-
-
     }
 }
