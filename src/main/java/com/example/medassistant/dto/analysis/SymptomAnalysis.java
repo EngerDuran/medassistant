@@ -4,6 +4,16 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 import java.util.List;
 
+/**
+ * ROOT DTO (Record Contenedor Principal):
+ * Este es el contrato de datos raíz que se pasa a Spring AI en '.entity(SymptomAnalysis.class)'.
+ * Actúa como orquestador, definiendo un JSON Schema multinivel que combina:
+ * - Tipos escalares simples (Strings).
+ * - Colecciones escalares (List<String> para síntomas extraídos).
+ * - Enums de decisión clínica (Urgency).
+ * - Objetos complejos anidados (List<PossibleCondition>).
+ */
+
 public record SymptomAnalysis(
 
         @JsonPropertyDescription("Lista de sintomas identificados en la consulta del paciente")
