@@ -1,6 +1,7 @@
 package com.example.medassistant.service;
 
 import com.example.medassistant.config.ClientResolver;
+import com.example.medassistant.tools.AppointmentSearchTool;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +21,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AssistantServiceImpl implements AssistantService {
     private final ClientResolver clientResolver;
+    private final AppointmentSearchTool appointmentSearchTool;
 
     // Carga de la plantilla externa desde el classpath para desacoplar el prompt del código Java
     @Value("classpath:/prompts/explain-condition.st")
@@ -53,17 +55,22 @@ public class AssistantServiceImpl implements AssistantService {
     }
 
     /**
-     * Utiliza Prompt Templating con variables en Spring AI.
-     * Permite inyectar parámetros de forma limpia y segura evitando concatenación manual de cadenas.
+     * Endpoint conversacional principal asistido por agentes.
+     * Integra Function Calling vinculando {AppointmentSearchTool} al ciclo de vida del ChatClient.
+     * Si la consulta del usuario requiere datos en tiempo real (disponibilidad de agenda),
+     * el LLM suspende la generación de texto, orquesta la ejecución local del metodo Java
+     * y utiliza el resultado persistido para sintetizar una respuesta natural.
      */
-
     @Override
     public String chat(String prompt, String model) {
         log.info("Chat request - modelo: {} ", model);
 
 
         return clientResolver.resolve(model)
-                .prompt(prompt).call().content();
+                .prompt(prompt)
+                .tools(appointmentSearchTool)
+                .call().
+                content();
     }
 
     @Override
