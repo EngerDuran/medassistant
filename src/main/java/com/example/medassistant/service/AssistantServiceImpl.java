@@ -21,7 +21,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AssistantServiceImpl implements AssistantService {
     private final ClientResolver clientResolver;
-    private final AppointmentSearchTool appointmentSearchTool;
 
     // Carga de la plantilla externa desde el classpath para desacoplar el prompt del código Java
     @Value("classpath:/prompts/explain-condition.st")
@@ -68,7 +67,6 @@ public class AssistantServiceImpl implements AssistantService {
 
         return clientResolver.resolve(model)
                 .prompt(prompt)
-                .tools(appointmentSearchTool)
                 .call().
                 content();
     }
