@@ -22,9 +22,10 @@ public class ChatController {
 
     @PostMapping
     public ResponseEntity <String> chat(
-           @Valid @RequestBody ChatRequest request
+           @Valid @RequestBody ChatRequest request,
+           @RequestHeader(value = "X-User-ID", defaultValue = "1") Long userId
             ) {
-        return ResponseEntity.ok(assistantService.chat(request.prompt(), request.model()));
+        return ResponseEntity.ok(assistantService.chat(request.prompt(), request.model(), userId));
     }
 
     /**
