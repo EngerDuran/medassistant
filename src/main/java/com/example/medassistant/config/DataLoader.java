@@ -86,7 +86,7 @@ public class DataLoader implements CommandLineRunner {
 
     private void loadPatients() {
         patientRepository.saveAll(List.of(
-                Patient.builder().firstName("Gabriel").lastName("Ejemplo")
+                Patient.builder().firstName("Enger").lastName("Ejemplo")
                         .dateOfBirth(LocalDate.of(1985, 3, 15))
                         .allergies("Penicilina")
                         .conditions("Hipertensión leve controlada con medicación").build(),
