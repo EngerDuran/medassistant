@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,19 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         return toAppointmentInfoList(appointments, doctorNames, specialty);
     }
+
+    @Override
+    public String bookAppointment(String specialty, LocalDate date, LocalTime time, Long patientId) {
+        return "";
+    }
+
+    private Appointment findAvailableAppointment(List<Long> doctorIds, LocalDate date, LocalTime time){
+        return appointmentRepository.findByDoctorIdAndDateAndStartTimeAndAvailableTrue(doctorIds, date, time)
+                .stream()
+                .findFirst()
+                .orElse(null);
+    }
+
     /**
      * Genera un mapa asociativo de ID de doctor a Nombre Completo para acelerar la resolución en memoria.
      */

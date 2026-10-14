@@ -2,9 +2,11 @@ package com.example.medassistant.controller;
 
 import com.example.medassistant.dto.ChatRequest;
 import com.example.medassistant.service.AssistantService;
+import com.example.medassistant.util.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,7 @@ import reactor.core.publisher.Flux;
 public class ChatController {
 
    private final AssistantService assistantService;
+   private final SecurityUtils securityUtils;
 
     /**
      * Endpoint síncrono y bloqueante.
@@ -25,10 +28,12 @@ public class ChatController {
     @PostMapping
     public ResponseEntity <String> chat(
             @Valid @RequestBody ChatRequest request,
-            @AuthenticationPrincipal Jwt jwt
+            @AuthenticationPrincipal Jwt jwt,
+            Authentication authentication
             ) {
         Long userId = jwt.getClaim("userId");
-        return ResponseEntity.ok(assistantService.chat(request.prompt(), request.model(), userId));
+        String role = securityUtils.extractRole(authentication);
+        return ResponseEntity.ok(assistantService.chat(request.prompt(), request.model(), userId, role));
     }
 
     /**
