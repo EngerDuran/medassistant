@@ -7,7 +7,6 @@ import java.util.List;
 
 /**
  * Data Access Layer para la gestión del personal médico.
- *
  * Expone métodos derivados de consulta (Spring Data JPA derived queries) optimizados
  * para ser consumidos directamente por Function Calling / AI Tools:
  * - Búsqueda insensible a mayúsculas/minúsculas para mitigar variaciones del LLM.

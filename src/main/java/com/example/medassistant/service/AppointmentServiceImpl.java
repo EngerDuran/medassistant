@@ -5,6 +5,7 @@ import com.example.medassistant.model.Appointment;
 import com.example.medassistant.model.Doctor;
 import com.example.medassistant.repository.AppointmentRepository;
 import com.example.medassistant.repository.DoctorRepository;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -58,11 +59,44 @@ public class AppointmentServiceImpl implements AppointmentService {
         return toAppointmentInfoList(appointments, doctorNames, specialty);
     }
 
+
+    /**
+     * Reserva un turno médico y actualiza su estado en la base de datos.
+     * Se usa @Transactional para asegurar que, si ocurre algún error al guardar,
+     * no queden datos corruptos ni turnos bloqueados a medias.
+     */
+    @Transactional
     @Override
     public String bookAppointment(String specialty, LocalDate date, LocalTime time, Long patientId) {
-        return "";
+
+        log.info("Reservando turno: specialty={}, date={}, time={}, patientId={}",
+                specialty, date, time, patientId);
+
+        // Verificamos que existan médicos para esa especialidad
+        var doctors = doctorRepository.findBySpecialtyIgnoreCase(specialty);
+        if(doctors.isEmpty()) {
+            return "No se encontró la especialidad: " + specialty;
+        }
+
+        // Extraemos solo los IDs de los médicos para buscar en sus agendas
+        var doctorIds = doctors.stream().map(Doctor::getId).toList();
+
+        // Buscamos si alguno tiene libre ese día a esa hora exacta
+        var appointment = findAvailableAppointment(doctorIds, date, time);
+        if(appointment == null) {
+            return "El turno no está disponible.";
+        }
+
+        // Bloqueamos el turno, asignamos el paciente y guardamos los cambios
+        appointment.setAvailable(false);
+        appointment.setPatientId(patientId);
+
+        appointmentRepository.save(appointment);
+
+        return "Turno reservado exitosamente.";
     }
 
+    @Transactional(readOnly = true)
     private Appointment findAvailableAppointment(List<Long> doctorIds, LocalDate date, LocalTime time){
         return appointmentRepository.findByDoctorIdAndDateAndStartTimeAndAvailableTrue(doctorIds, date, time)
                 .stream()

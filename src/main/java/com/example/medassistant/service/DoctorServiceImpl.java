@@ -6,6 +6,7 @@ import com.example.medassistant.repository.DoctorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -21,6 +22,8 @@ import java.util.List;
 public class DoctorServiceImpl implements  DoctorService {
 
     private final DoctorRepository doctorRepository;
+
+    @Transactional(readOnly = true)
 
     @Override
     public List<DoctorInfo> searchDoctors(String query) {

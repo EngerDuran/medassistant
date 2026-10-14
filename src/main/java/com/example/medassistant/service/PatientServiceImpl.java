@@ -6,6 +6,7 @@ import com.example.medassistant.repository.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 
 /**
@@ -19,6 +20,8 @@ import org.springframework.stereotype.Service;
 public class PatientServiceImpl implements  PatientService {
 
     private final PatientRepository patientRepository;
+
+    @Transactional(readOnly = true)
 
     /**
      * Recupera y transforma el expediente del paciente por su identificador primario.
