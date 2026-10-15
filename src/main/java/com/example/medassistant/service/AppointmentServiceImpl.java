@@ -98,7 +98,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Transactional(readOnly = true)
     private Appointment findAvailableAppointment(List<Long> doctorIds, LocalDate date, LocalTime time){
-        return appointmentRepository.findByDoctorIdAndDateAndStartTimeAndAvailableTrue(doctorIds, date, time)
+        return appointmentRepository.findByDoctorIdInAndDateAndStartTimeAndAvailableTrue(doctorIds, date, time)
                 .stream()
                 .findFirst()
                 .orElse(null);
