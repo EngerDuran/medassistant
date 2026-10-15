@@ -5,6 +5,6 @@ spring:
       chat:
         options:
           model: llama3.2:3b
-          temperature: 0.4
+          temperature: 0.2
           top-p: 0.85
           num-predict: 2048

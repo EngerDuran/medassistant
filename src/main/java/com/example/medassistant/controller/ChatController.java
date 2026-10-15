@@ -44,9 +44,13 @@ public class ChatController {
 
     @PostMapping (value = "/stream", produces = "text/event-stream; charset=UTF-8")
     public Flux<String> chatStream(
-           @Valid @RequestBody ChatRequest request
+           @Valid @RequestBody ChatRequest request,
+           @AuthenticationPrincipal Jwt jwt,
+           Authentication authentication
     ) {
-        return assistantService.chatStream(request.prompt(), request.model());
+        Long userId = jwt.getClaim("userId");
+        String role = securityUtils.extractRole(authentication);
+        return assistantService.chatStream(request.prompt(), request.model(), userId, role);
     }
 
 

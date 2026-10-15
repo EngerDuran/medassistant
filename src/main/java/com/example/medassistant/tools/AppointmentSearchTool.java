@@ -39,6 +39,7 @@ public class AppointmentSearchTool {
                         String date
     ){
         log.info("Buscando turnos disponibles: specialty={}, date={}", specialty, date);
+
         return appointmentService.findAvailableAppointments(specialty, LocalDate.parse(date));
     }
 }

@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.RestClientException;
 
+import java.time.DateTimeException;
+import java.time.format.DateTimeParseException;
+
 
 /**
  * Controlador global de excepciones.
@@ -26,4 +29,14 @@ public class GlobalExceptionHandler {
                 .body("El servicio externo no está disponible en este momento");
 
     }
+
+
+    @ExceptionHandler(DateTimeException.class)
+    public ResponseEntity<String> handleDateTimeParseException(DateTimeParseException e) {
+        log.warn("Formato de fecha inválido: {}", e.getParsedString());
+        return ResponseEntity.badRequest()
+                .body("Formato de fecha inválido. Use el formato yyyy-MM-dd");
+    }
+
+
 }

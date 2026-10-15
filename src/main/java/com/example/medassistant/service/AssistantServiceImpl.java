@@ -73,11 +73,12 @@ public class AssistantServiceImpl implements AssistantService {
     }
 
     @Override
-    public Flux<String> chatStream(String prompt, String model) {
-        log.info("Stream request - modelo: {} ", model);
+    public Flux<String> chatStream(String prompt, String model, Long userId, String role) {
+        log.info("Stream request - modelo: {}, userId: {}", model, userId);
 
         return clientResolver.resolve(model)
                 .prompt(prompt)
+                .toolContext(Map.of("userId", userId, "role", role))
                 .stream()
                 .content();
     }
