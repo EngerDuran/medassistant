@@ -3,6 +3,7 @@ package com.example.medassistant.service;
 import com.example.medassistant.config.ClientResolver;
 import com.example.medassistant.tools.AppointmentSearchTool;
 import lombok.RequiredArgsConstructor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +69,7 @@ public class AssistantServiceImpl implements AssistantService {
         return clientResolver.resolve(model)
                 .prompt(prompt)
                 .toolContext(Map.of("userId", userId, "role", role))
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .call().
                 content();
     }
@@ -79,6 +81,8 @@ public class AssistantServiceImpl implements AssistantService {
         return clientResolver.resolve(model)
                 .prompt(prompt)
                 .toolContext(Map.of("userId", userId, "role", role))
+                // Vincula la memoria del chat al ID del usuario autenticado para que las conversaciones no se mezclen entre pacientes.
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .stream()
                 .content();
     }

@@ -3,6 +3,8 @@ package com.example.medassistant.config;
 import com.example.medassistant.tools.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +33,7 @@ public class AssistantConfig {
     private final PatientInfoTool patientInfoTool;
     private final DrugInfoTool drugInfoTool;
     private final AppointmentBookingTool appointmentBookingTool;
+    private final ChatMemory chatMemory;
 
     /**
      * Bean del cliente de Gemini con System Prompt por defecto
@@ -46,6 +49,7 @@ public class AssistantConfig {
                 .defaultSystem(systemPrompt)
                 .defaultTools(appointmentSearchTool, doctorInfoTool,
                         patientInfoTool, drugInfoTool, appointmentBookingTool)
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
     }
 
@@ -61,6 +65,7 @@ public class AssistantConfig {
                 .defaultSystem(systemPrompt)
                 .defaultTools(appointmentSearchTool, doctorInfoTool,
                         patientInfoTool, drugInfoTool, appointmentBookingTool)
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
     }
 }
