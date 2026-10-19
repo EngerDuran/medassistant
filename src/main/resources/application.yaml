@@ -19,3 +19,8 @@ spring:
         repository:
           jdbc:
             initialize-schema: always
+    vector-store:
+      chroma:
+        url: http://localhost:8000
+        collection-name: medassistant
+        initialize-schema: true

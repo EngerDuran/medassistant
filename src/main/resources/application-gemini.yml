@@ -9,3 +9,7 @@ spring:
             temperature: 0.2
             top-p: 0.85
             max-output-tokens: 2048
+        embedding:
+          api-key: ${GOOGLE_AI_API_KEY}
+          text:
+            model: text-embedding-004
