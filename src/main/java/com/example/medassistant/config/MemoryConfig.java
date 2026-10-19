@@ -1,6 +1,7 @@
 package com.example.medassistant.config;
 
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,8 +21,9 @@ public class MemoryConfig {
      * solo conservamos las últimas 9 interacciones. Las más antiguas se descartan automáticamente.
      */
     @Bean
-    public ChatMemory chatMemory() {
+    public ChatMemory chatMemory(ChatMemoryRepository chatMemoryRepository) {
         return MessageWindowChatMemory.builder()
+                .chatMemoryRepository(chatMemoryRepository)
                 .maxMessages(9)
                 .build();
     }
