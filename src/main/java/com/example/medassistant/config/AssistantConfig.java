@@ -5,8 +5,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chroma.vectorstore.ChromaApi;
+import org.springframework.ai.chroma.vectorstore.ChromaVectorStore;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -68,4 +73,46 @@ public class AssistantConfig {
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
     }
+
+    /**
+     * Configuración de los almacenes (Vector Stores) respaldados por ChromaDB.
+     * Dos beans distintos, Google y Ollama.
+     * tienen dimensionalidades y espacios vectoriales incompatibles entre sí.
+     * Mezclarlos en una misma colección rompería las búsquedas por similitud coseno.
+     * Por ello, aislamos cada modelo en su propia colección dentro de Chroma.
+     */
+
+
+    /**
+     * Almacén vectorial optimizado para embeddings generados por Google GenAI.
+     */
+    @Bean("googleVectorStore")
+    VectorStore googleVectorStore(
+          @Qualifier("GoogleGenAiTextEmbedding") EmbeddingModel embedding,
+            ChromaApi chromaApi) {
+        return ChromaVectorStore.builder(chromaApi, embedding)
+                .collectionName("medassistant_google")
+                .initializeSchema(true)
+                .build();
+    }
+
+    /**
+     * Almacén vectorial optimizado para embeddings generados por Ollama.
+     */
+    @Bean("ollamaVectorStore")
+    VectorStore ollamaVectorStore(
+            @Qualifier("ollamaEmbeddingModel") EmbeddingModel embedding,
+            ChromaApi chromaApi) {
+        return ChromaVectorStore.builder(chromaApi, embedding)
+                .collectionName("medassistant_ollama")
+                .initializeSchema(true)
+                .build();
+    }
+
+
 }
+
+
+
+
+
