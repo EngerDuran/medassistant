@@ -4,12 +4,14 @@ import com.example.medassistant.tools.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chroma.vectorstore.ChromaApi;
 import org.springframework.ai.chroma.vectorstore.ChromaVectorStore;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,16 +47,30 @@ public class AssistantConfig {
      * para asegurar el tono de triaje y evitar diagnósticos prescriptivos.
      */
     @Bean("geminiClient")
-    ChatClient geminiClient(GoogleGenAiChatModel chatModel) throws IOException {
+    ChatClient geminiClient(
+            GoogleGenAiChatModel chatModel,
+           @Qualifier("googleVectorStore") VectorStore vectorStore
+
+    ) throws IOException {
 
         String systemPrompt = systemPromptResource.getContentAsString(StandardCharsets.UTF_8)
                 .replace("{currentDate}", LocalDate.now().toString());
 
+        /**
+        * RAG (Retrieval-Augmented Generation): Incorpora QuestionAnswerAdvisor para interceptar
+        * el mensaje del usuario y buscar contexto clínico en el VectorStore antes de llamar al LLM.
+        * Solo recupera los 3 fragmentos más relevantes (topK=3) que superen un 70% de
+         * coincidencia semántica (similarityThreshold=0.7) para minimizar alucinaciones.
+         */
         return ChatClient.builder(chatModel)
                 .defaultSystem(systemPrompt)
                 .defaultTools(appointmentSearchTool, doctorInfoTool,
                         patientInfoTool, drugInfoTool, appointmentBookingTool)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build(),
+                        QuestionAnswerAdvisor.builder(vectorStore)
+                                .searchRequest(SearchRequest.builder()
+                                        .similarityThreshold(0.7).topK(3).build()
+                                ).build())
                 .build();
     }
 
@@ -63,14 +79,23 @@ public class AssistantConfig {
      * garantizando paridad de comportamiento entre entornos.
      */
     @Bean("ollamaClient")
-    ChatClient ollamaClient(OllamaChatModel chatModel) throws IOException {
+    ChatClient ollamaClient(OllamaChatModel chatModel,
+                            @Qualifier("ollamaVectorStore") VectorStore vectorStore
+                            ) throws IOException {
         String systemPrompt = systemPromptResource.getContentAsString(StandardCharsets.UTF_8)
                 .replace("{currentDate}", LocalDate.now().toString());
         return ChatClient.builder(chatModel)
                 .defaultSystem(systemPrompt)
                 .defaultTools(appointmentSearchTool, doctorInfoTool,
                         patientInfoTool, drugInfoTool, appointmentBookingTool)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build(),
+                        QuestionAnswerAdvisor.builder(vectorStore)
+                                .searchRequest(SearchRequest.builder()
+                                        .similarityThreshold(0.7)
+                                        .topK(3)
+                                        .build())
+                                .build()
+                        )
                 .build();
     }
 
@@ -109,6 +134,18 @@ public class AssistantConfig {
                 .build();
     }
 
+    /**
+     * Cliente HTTP para la comunicación con la instancia de ChromaDB.
+     * Externaliza la URL de conexión para facilitar
+     * la transición entre entornos (ej. contenedor Docker en local vs. clúster en AWS).
+     * Este cliente es inyectado posteriormente en la construcción de los VectorStores.
+     */
+    @Bean
+    ChromaApi chromaApi(@Value("${spring.aii.vectorstore.chroma.url}") String chromaUrl) {
+        return ChromaApi.builder()
+                .baseUrl(chromaUrl)
+                .build();
+    }
 
 }
 
