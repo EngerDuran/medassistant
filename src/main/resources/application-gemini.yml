@@ -12,4 +12,4 @@ spring:
         embedding:
           api-key: ${GOOGLE_AI_API_KEY}
           text:
-            model: text-embedding-004
+            model: gemini-embedding-001
