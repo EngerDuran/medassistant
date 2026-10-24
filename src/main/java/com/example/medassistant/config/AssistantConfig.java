@@ -42,6 +42,7 @@ public class AssistantConfig {
     private final DrugInfoTool drugInfoTool;
     private final AppointmentBookingTool appointmentBookingTool;
     private final ChatMemory chatMemory;
+    private final MedicalAuditAdvisor medicalAuditAdvisor;
 
     /**
      * Bean del cliente de Gemini con System Prompt por defecto
@@ -78,7 +79,7 @@ public class AssistantConfig {
                                                 
                                                 Si la información no está en los documentos, puedes usar tus herramientas o tus conocimientos generales para responder.
                                                 """))
-                                .build())
+                                .build(), medicalAuditAdvisor)
                 .build();
     }
 
@@ -109,8 +110,8 @@ public class AssistantConfig {
                                                 
                                                 Si la información no está en los documentos, puedes usar tus herramientas o tus conocimientos generales para responder.
                                                 """))
-                                .build()
-                        )
+                                .build(), medicalAuditAdvisor)
+
                 .build();
     }
 
