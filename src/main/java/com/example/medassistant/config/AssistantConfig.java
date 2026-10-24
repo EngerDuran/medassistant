@@ -6,6 +6,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chroma.vectorstore.ChromaApi;
 import org.springframework.ai.chroma.vectorstore.ChromaVectorStore;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -69,8 +70,15 @@ public class AssistantConfig {
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build(),
                         QuestionAnswerAdvisor.builder(vectorStore)
                                 .searchRequest(SearchRequest.builder()
-                                        .similarityThreshold(0.7).topK(3).build()
-                                ).build())
+                                        .similarityThreshold(0.7).topK(3).build())
+                                        .promptTemplate(new PromptTemplate("""
+                                                
+                                                Contexto de documentos médicos (Usalo si es relevante para la pregunta):
+                                                {question_answer_context}
+                                                
+                                                Si la información no está en los documentos, puedes usar tus herramientas o tus conocimientos generales para responder.
+                                                """))
+                                .build())
                 .build();
     }
 
@@ -94,6 +102,13 @@ public class AssistantConfig {
                                         .similarityThreshold(0.7)
                                         .topK(3)
                                         .build())
+                                .promptTemplate(new PromptTemplate("""
+                                                
+                                                Contexto de documentos médicos (Usalo si es relevante para la pregunta):
+                                                {question_answer_context}
+                                                
+                                                Si la información no está en los documentos, puedes usar tus herramientas o tus conocimientos generales para responder.
+                                                """))
                                 .build()
                         )
                 .build();
@@ -113,7 +128,7 @@ public class AssistantConfig {
      */
     @Bean("googleVectorStore")
     VectorStore googleVectorStore(
-          @Qualifier("GoogleGenAiTextEmbedding") EmbeddingModel embedding,
+          @Qualifier("googleGenAiTextEmbedding") EmbeddingModel embedding,
             ChromaApi chromaApi) {
         return ChromaVectorStore.builder(chromaApi, embedding)
                 .collectionName("medassistant_google")
@@ -141,7 +156,7 @@ public class AssistantConfig {
      * Este cliente es inyectado posteriormente en la construcción de los VectorStores.
      */
     @Bean
-    ChromaApi chromaApi(@Value("${spring.aii.vectorstore.chroma.url}") String chromaUrl) {
+    ChromaApi chromaApi(@Value("${spring.ai.vectorstore.chroma.url}") String chromaUrl) {
         return ChromaApi.builder()
                 .baseUrl(chromaUrl)
                 .build();
