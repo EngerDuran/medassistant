@@ -7,6 +7,7 @@ import com.example.medassistant.dto.analysis.SymptomAnalysis;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -40,12 +41,13 @@ public class AnalysisServiceImpl implements  AnalysisService {
      */
 
     @Override
-    public ConditionSummary summarizeCondition(String condition, String model) {
+    public ConditionSummary summarizeCondition(String condition, String model, long userId) {
         log.info("Análisis estruturado de condición:{}, modelo:{}", condition, model);
 
         return clientResolver.resolve(model)
                 .prompt()
                 .user("Proporciona un resumen médico educativo sobre: " + condition)
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .call()
                 .entity(ConditionSummary.class);
     }
@@ -57,19 +59,20 @@ public class AnalysisServiceImpl implements  AnalysisService {
      * un array JSON directamente en una colección fuertemente tipada.
      */
     @Override
-    public List<ConditionSummary> ListRelatedConditions(String symptoms, String model) {
+    public List<ConditionSummary> ListRelatedConditions(String symptoms, String model, long userId) {
         log.info("Listado de condiciones relacionadas - modelo: {} ", model);
         return clientResolver.resolve(model)
                 .prompt()
                 .user("Pasa en lista las 3 condiciones médicas más probables " +
                                 "para estos síntomas: " + symptoms
                                 )
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .call()
                 .entity(new ParameterizedTypeReference<>() {});
     }
 
     @Override
-    public SymptomAnalysis analyzeSymptoms(String symptoms, String model) {
+    public SymptomAnalysis analyzeSymptoms(String symptoms, String model, long userId) {
         log.info("Análisis de síntomas - modelo: {}", model);
 
         String message = structuredAnalysisTemplate.render(
@@ -79,12 +82,13 @@ public class AnalysisServiceImpl implements  AnalysisService {
         return clientResolver.resolve(model)
                 .prompt()
                 .user(message)
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .call()
                 .entity(SymptomAnalysis.class);
     }
 
     @Override
-    public QueryClassification classifyQuery(String query, String model) {
+    public QueryClassification classifyQuery(String query, String model, long userId) {
         log.info("Clasificación de consulta - modelo: {}", model);
 
         return clientResolver.resolve(model)
@@ -92,6 +96,7 @@ public class AnalysisServiceImpl implements  AnalysisService {
                 .user("Clasifica la siguiente consulta de un paciente. : " +
                         "determina que tipo de consulta es y explica por qué. \n\n" +
                         "Consulta del paciente: \"" + query + "\"")
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .call()
                 .entity(QueryClassification.class);
 

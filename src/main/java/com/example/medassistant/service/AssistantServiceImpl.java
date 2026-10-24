@@ -3,6 +3,7 @@ package com.example.medassistant.service;
 import com.example.medassistant.config.ClientResolver;
 import com.example.medassistant.tools.AppointmentSearchTool;
 import lombok.RequiredArgsConstructor;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,9 +46,13 @@ public class AssistantServiceImpl implements AssistantService {
 
     private PromptTemplate consultationTemplate;
 
+    private final ChatMemory chatMemory;
+    private MessageChatMemoryAdvisor memoryAdvisor;
+
     // Inicializa el template de prompt tras completar la inyección de dependencias (@Value)
     @PostConstruct
     void init() {
+        memoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
         consultationTemplate = new PromptTemplate(consultationResource);
         diagnosisCotTemplate = new PromptTemplate(diagnosisCotResource);
         symptomAnalysisTemplate = new PromptTemplate(symptomAnalysisPrompt);
@@ -69,7 +74,8 @@ public class AssistantServiceImpl implements AssistantService {
         return clientResolver.resolve(model)
                 .prompt(prompt)
                 .toolContext(Map.of("userId", userId, "role", role))
-                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
+                .advisors(a -> a.advisors(memoryAdvisor)
+                        .param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .call().
                 content();
     }
@@ -81,8 +87,8 @@ public class AssistantServiceImpl implements AssistantService {
         return clientResolver.resolve(model)
                 .prompt(prompt)
                 .toolContext(Map.of("userId", userId, "role", role))
-                // Vincula la memoria del chat al ID del usuario autenticado para que las conversaciones no se mezclen entre pacientes.
-                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
+                .advisors(a -> a.advisors(memoryAdvisor)
+                        .param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .stream()
                 .content();
     }
@@ -90,13 +96,14 @@ public class AssistantServiceImpl implements AssistantService {
     //Prompt Templating mediante .param() para inyectar variables de forma segura
     // en lugar de concatenar cadenas manuales, garantizando un tono clínico claro y accesible.
     @Override
-    public String explainCondition(String condition, String model) {
+    public String explainCondition(String condition, String model, long userId) {
         log.info("Explain request - condición: {}, modelo: {}", condition, model);
 
         String message = explainConditionTemplate.render(Map.of("condition", condition));
 
         return clientResolver.resolve(model)
                 .prompt(message)
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .call()
                 .content();
     }
@@ -107,37 +114,40 @@ public class AssistantServiceImpl implements AssistantService {
      * sin emitir diagnósticos definitivos.
      */
     @Override
-    public String analyzeSymptoms(String symptoms, String model) {
+    public String analyzeSymptoms(String symptoms, String model, long userId) {
         log.info("Análisis de síntomas: {}, modelo: {}", symptoms, model);
 
         String message = symptomAnalysisTemplate.render(Map.of("sintomas", symptoms));
 
         return clientResolver.resolve(model)
                 .prompt(message)
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .call()
                 .content();
     }
 
     @Override
-    public String diagnoseWithReasoning(String symptoms, String model) {
+    public String diagnoseWithReasoning(String symptoms, String model, long userId) {
         log.info("Diagnostico CoT- modelo: {}", model);
 
         String message = diagnosisCotTemplate.render(Map.of("sintomas", symptoms));
 
         return clientResolver.resolve(model)
                 .prompt(message)
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .call()
                 .content();
     }
 
     @Override
-    public String consult(String query, String model) {
+    public String consult(String query, String model, long userId) {
         log.info("Consulta médica - modelo: {} ", model);
 
         String message = consultationTemplate.render(Map.of("consulta", query));
 
         return clientResolver.resolve(model)
                 .prompt(message)
+                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, String.valueOf(userId)))
                 .call()
                 .content();
     }

@@ -51,9 +51,7 @@ public class AssistantConfig {
     @Bean("geminiClient")
     ChatClient geminiClient(
             GoogleGenAiChatModel chatModel,
-           @Qualifier("googleVectorStore") VectorStore vectorStore
-
-    ) throws IOException {
+           @Qualifier("googleVectorStore") VectorStore vectorStore) throws IOException {
 
         String systemPrompt = systemPromptResource.getContentAsString(StandardCharsets.UTF_8)
                 .replace("{currentDate}", LocalDate.now().toString());
@@ -68,8 +66,7 @@ public class AssistantConfig {
                 .defaultSystem(systemPrompt)
                 .defaultTools(appointmentSearchTool, doctorInfoTool,
                         patientInfoTool, drugInfoTool, appointmentBookingTool)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build(),
-                        QuestionAnswerAdvisor.builder(vectorStore)
+                .defaultAdvisors(QuestionAnswerAdvisor.builder(vectorStore)
                                 .searchRequest(SearchRequest.builder()
                                         .similarityThreshold(0.7).topK(3).build())
                                         .promptTemplate(new PromptTemplate("""
@@ -97,8 +94,7 @@ public class AssistantConfig {
                 .defaultSystem(systemPrompt)
                 .defaultTools(appointmentSearchTool, doctorInfoTool,
                         patientInfoTool, drugInfoTool, appointmentBookingTool)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build(),
-                        QuestionAnswerAdvisor.builder(vectorStore)
+                .defaultAdvisors(QuestionAnswerAdvisor.builder(vectorStore)
                                 .searchRequest(SearchRequest.builder()
                                         .similarityThreshold(0.7)
                                         .topK(3)
