@@ -7,6 +7,7 @@ import com.example.medassistant.dto.analysis.SymptomAnalysis;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -91,7 +92,7 @@ public class AnalysisServiceImpl implements  AnalysisService {
     public QueryClassification classifyQuery(String query, String model, long userId) {
         log.info("Clasificación de consulta - modelo: {}", model);
 
-        return clientResolver.resolve(model)
+        return ChatClient.create(clientResolver.resolveModel(model))
                 .prompt()
                 .user("Clasifica la siguiente consulta de un paciente. : " +
                         "determina que tipo de consulta es y explica por qué. \n\n" +
