@@ -2,6 +2,7 @@ package com.example.medassistant.controller;
 
 import com.example.medassistant.agent.AppointmentChainService;
 import com.example.medassistant.agent.RoutingWorkFlowService;
+import com.example.medassistant.agent.orchestrator.OrchestratorService;
 import com.example.medassistant.dto.ChatRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class AgentController {
 
     private final AppointmentChainService appointmentChainService;
     private final RoutingWorkFlowService routingWorkFlowService;
+    private final OrchestratorService orchestratorService;
 
     @PostMapping("/chain/appointment")
     public ResponseEntity<String> bookAppointmentChain(
@@ -40,6 +42,15 @@ public class AgentController {
         Long userId = jwt.getClaim("userId");
         return ResponseEntity.ok(
                 routingWorkFlowService.routeQuery(request.prompt(), request.model(), userId));
+    }
+
+    @PostMapping("/orchestrator")
+    public  ResponseEntity<String> orchestrate(
+            @Valid @RequestBody ChatRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long userId = jwt.getClaim("userId");
+        return ResponseEntity.ok(
+                orchestratorService.orchestrate(request.prompt(), request.model(), userId));
     }
 
 

@@ -44,7 +44,7 @@ public class ClinicalWorker {
      * y el contexto queden aislados y no se mezclen datos de distintos usuarios.
      */
     public String analyze(String symptoms, String model) {
-        String prompt = clinicalTemplate.render(Map.of("symptoms", symptoms));
+        String prompt = clinicalTemplate.render(Map.of("sintomas", symptoms));
 
         String result = ChatClient.create(clientResolver.resolveModel(model))
                 .prompt()

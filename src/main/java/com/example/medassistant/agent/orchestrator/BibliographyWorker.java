@@ -79,7 +79,7 @@ public class BibliographyWorker {
                         SearchRequest.builder()
                                 .query(symptoms)
                                 .topK(3) // Limitamos a los 3 fragmentos más relevantes para no saturar la ventana de contexto del LLM
-                                .similarityThreshold(0.7) // Exigimos un 70% mínimo de coincidencia semántica para asegurar calidad
+                                .similarityThreshold(0.3) // Exigimos un 30% mínimo de coincidencia semántica para asegurar calidad
                                 .build());
 
         log.info("Worker bibliografía - documentos encontrados: {}", documents.size());
