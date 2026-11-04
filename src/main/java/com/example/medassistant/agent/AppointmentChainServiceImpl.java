@@ -4,6 +4,7 @@ package com.example.medassistant.agent;
 import com.example.medassistant.config.ClientResolver;
 import com.example.medassistant.dto.AppointmentInfo;
 import com.example.medassistant.dto.agent.AppointmentRequest;
+import com.example.medassistant.dto.agent.AppointmentSelection;
 import com.example.medassistant.service.AppointmentService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +27,7 @@ public class AppointmentChainServiceImpl  implements  AppointmentChainService {
 
     private final ClientResolver clientResolver;
     private final AppointmentService appointmentService;
+    private final PendingBookingStore pendingBookingStore;
 
     @Value("classpath:/prompts/appointment-extraction.st")
     private Resource extractionResource;
@@ -46,7 +49,74 @@ public class AppointmentChainServiceImpl  implements  AppointmentChainService {
         AppointmentRequest extracted = interpret(userRequest, model);
         List<AppointmentInfo> available = search(extracted);
 
-        return confirm(userRequest, available, model);
+        return select(userRequest, available, model, userId);
+    }
+
+    /**
+     * Patrón Human-in-the-Loop: Confirmación explícita.
+     * Recupera el estado temporal de la reserva y efectúa la escritura final en base de datos.
+     */
+    @Override
+    public String confirmBooking(Long userId) {
+        // Recuperamos y eliminamos el turno de la memoria temporal (caché/Map)
+        AppointmentSelection selection =  pendingBookingStore.remove(userId);
+
+        if (selection == null) {
+            return "No hay un turno seleccionado para confirmar";
+        }
+
+        // Control de Concurrencia:
+        // Evita el problema del doble booking por si otro paciente reservó
+        // este mismo hueco mientras el usuario actual se lo estaba pensando.
+        if (!isStillAvailable(selection)) {
+            log.info("Turno ya no está disponible para userId={}: {} {} {}",
+                    userId, selection.specialty(), selection.date(), selection.time());
+            return "El turno seleccionado ya no está disponible. Por favor, elige otro turno.";
+        }
+
+        return book(selection, userId);
+    }
+
+    /**
+     * Helper privado que delega la persistencia final a la base de datos.
+     */
+    private String book(AppointmentSelection selection, Long userId) {
+
+        String result = appointmentService.bookAppointment(
+                selection.specialty(),
+                LocalDate.parse(selection.date()),
+                LocalTime.parse(selection.time()),
+                userId
+        );
+
+        log.info("Resultado de la reserva: {}", result);
+        return result;
+    }
+    /**
+     * Verifica contra la base de datos en tiempo real si el hueco sigue libre.
+     */
+    private boolean isStillAvailable(AppointmentSelection selection) {
+        List<AppointmentInfo> available = appointmentService.findAvailableAppointments(
+                selection.specialty(), LocalDate.parse(selection.date()));
+
+        return available.stream().anyMatch( a -> a.time().equals(selection.time()));
+    }
+
+    /**
+     * Descarta la reserva temporal liberando la memoria.
+     */
+    @Override
+    public String cancelBooking(Long userId) {
+
+        AppointmentSelection selection =  pendingBookingStore.remove(userId);
+
+        if (selection == null) {
+            return "No hay un turno seleccionado para cancelar";
+        }
+        log.info("Turno cancelado por userId={}: {} {} {}",
+                userId, selection.specialty(), selection.date(), selection.time());
+
+        return "Turno descartado, puedes buscar otro cuando quieras.";
     }
 
     private AppointmentRequest interpret(String userRequest, String model){
@@ -74,19 +144,32 @@ public class AppointmentChainServiceImpl  implements  AppointmentChainService {
         return  available;
     }
 
-    private String confirm(String userRequest, List<AppointmentInfo> available, String model){
-        String prompt = confirmationTemplate.render(Map.of(
+    private String select(String userRequest, List<AppointmentInfo> available,
+                          String model, Long userId) {
+        if (available.isEmpty()) {
+            return "No se encontraron turnos disponibles para esa especialidad, puedes probar con otra fecha.";
+        }
+
+        AppointmentSelection selection = selectAppointment(userRequest, available, model);
+
+        pendingBookingStore.store(userId, selection);
+
+        return selection.message();
+
+    }
+
+    private AppointmentSelection selectAppointment(String userRequest, List<AppointmentInfo> available, String model) {
+        String prompt = extractionTemplate.render(Map.of(
                 "pedido", userRequest,
-                "turnos", available.isEmpty() ? "Ninguno disponibles." : available.toString()
-        ));
+                "turnos", available.toString()
+                ));
 
-        log.info("Chain paso 3 - turnos enviados al modelo: {}", available);
-
-        return  ChatClient.create(clientResolver.resolveModel(model))
+        return ChatClient.create(clientResolver.resolveModel(model))
                 .prompt()
-                .system("Eres un asistente de gestión de turnos médicos, responde de forma breve y natural")
+                .system("Eres un asistente de gestión de turnos médicos. " +
+                        "Selecciona el mejor turno y completa todos los campos.")
                 .user(prompt)
                 .call()
-                .content();
+                .entity(AppointmentSelection.class);
     }
 }

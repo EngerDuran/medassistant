@@ -23,6 +23,12 @@ public class AgentController {
     private final RoutingWorkFlowService routingWorkFlowService;
     private final OrchestratorService orchestratorService;
 
+
+    /**
+     * Seguridad por diseño: El userId se extrae criptográficamente del token JWT
+     * (@AuthenticationPrincipal), ignorando cualquier ID que pudiera mandar el frontend
+     * o la IA. Esto previene vulnerabilidades.
+     */
     @PostMapping("/chain/appointment")
     public ResponseEntity<String> bookAppointmentChain(
             @Valid @RequestBody ChatRequest request,
@@ -51,6 +57,20 @@ public class AgentController {
         Long userId = jwt.getClaim("userId");
         return ResponseEntity.ok(
                 orchestratorService.orchestrate(request.prompt(), request.model(), userId));
+    }
+
+    @PostMapping("/chain/appointment/confirm")
+    public ResponseEntity<String> confirmBooking(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        Long userId = jwt.getClaim("userId");
+        return ResponseEntity.ok(appointmentChainService.confirmBooking(userId));
+    }
+
+    @PostMapping("/chain/appointment/cancel")
+    public ResponseEntity<String> cancelBooking(@AuthenticationPrincipal Jwt jwt) {
+        Long userId = jwt.getClaim("userId");
+        return ResponseEntity.ok(appointmentChainService.cancelBooking(userId));
     }
 
 
