@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
 
 @RestController
 @RequiredArgsConstructor
@@ -71,6 +72,14 @@ public class AgentController {
     public ResponseEntity<String> cancelBooking(@AuthenticationPrincipal Jwt jwt) {
         Long userId = jwt.getClaim("userId");
         return ResponseEntity.ok(appointmentChainService.cancelBooking(userId));
+    }
+
+    @PostMapping(value = "/orchestrator/progress", produces = "text/event-stream; charset=UTF-8")
+    public Flux<String> orchestrateWithProgress(
+            @Valid @RequestBody ChatRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long userId = jwt.getClaim("userId");
+        return orchestratorService.orchestrateWithProgress(request.prompt(), request.model(), userId);
     }
 
 
