@@ -1,6 +1,7 @@
 package com.example.medassistant.controller;
 
 import com.example.medassistant.agent.AppointmentChainService;
+import com.example.medassistant.agent.OpenAgentService;
 import com.example.medassistant.agent.RoutingWorkFlowService;
 import com.example.medassistant.agent.orchestrator.OrchestratorService;
 import com.example.medassistant.dto.ChatRequest;
@@ -23,6 +24,7 @@ public class AgentController {
     private final AppointmentChainService appointmentChainService;
     private final RoutingWorkFlowService routingWorkFlowService;
     private final OrchestratorService orchestratorService;
+    private final OpenAgentService openAgentService;
 
 
     /**
@@ -82,6 +84,18 @@ public class AgentController {
         return orchestratorService.orchestrateWithProgress(request.prompt(), request.model(), userId);
     }
 
-
+    /**
+     * Endpoint del Agente Autónomo.
+     * La identidad del usuario se garantiza criptográficamente desencriptando
+     * el token JWT (AuthenticationPrincipal), protegiendo la privacidad médica.
+     */
+    @PostMapping("/open")
+    public  ResponseEntity<String> openAgent(
+            @Valid @RequestBody ChatRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long userId = jwt.getClaim("userId");
+        return ResponseEntity.ok(
+                openAgentService.execute(request.prompt(), request.model(), userId));
+    }
 
 }
