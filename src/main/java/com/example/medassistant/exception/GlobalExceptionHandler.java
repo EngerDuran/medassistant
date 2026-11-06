@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.RestClientException;
 
+import java.nio.file.AccessDeniedException;
 import java.time.DateTimeException;
 import java.time.format.DateTimeParseException;
 
@@ -36,6 +37,26 @@ public class GlobalExceptionHandler {
         log.warn("Formato de fecha inválido: {}", e.getParsedString());
         return ResponseEntity.badRequest()
                 .body("Formato de fecha inválido. Use el formato yyyy-MM-dd");
+    }
+
+
+    /**
+     * Intercepta las excepciones de validación como pedir un modelo que no existe
+     * y las transforma en un error HTTP 400 (Bad Request) limpio para el frontend,
+     * evitando que el servidor devuelva un StackTrace completo HTTP 500 que exponga
+     * detalles internos de la arquitectura.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public  ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.warn("Argumento inválido: {}", e.getMessage());
+        return ResponseEntity.badRequest().body(e.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public  ResponseEntity<String> handleAccessDeniedException(AccessDeniedException e) {
+        log.warn("Acceso denegado: {}", e.getMessage());
+        return ResponseEntity.status(403)
+                .body("No tienes permisos para realizar esta accion.");
     }
 
 

@@ -43,15 +43,38 @@ public class ClientResolver {
      * Aplica Gemini como proveedor por defecto si no se especifica Ollama.
      */
     public ChatClient resolve(String model) {
-        return "ollama".equalsIgnoreCase(model) ? ollamaClient : geminiClient;
+        return switch (normalize(model)) {
+            case "gemini" -> geminiClient;
+            case "ollama" -> ollamaClient;
+            // Patrón de FailFast: Si el cliente envía basura, cortamos la ejecución de inmediato.
+            default -> throw new IllegalArgumentException(
+                    "Modelo no soportado: '%s'. Valores válidos: gemini, ollama".formatted(model));
+        };
     }
 
-
-    public ChatModel resolveModel(String model){
-        return "ollama".equalsIgnoreCase(model) ? ollamaModel : geminiModel;
+    public ChatModel resolveModel(String model) {
+        return switch (normalize(model)) {
+            case  "gemini" -> geminiModel;
+            case  "ollama" -> ollamaModel;
+            default ->  throw new IllegalArgumentException(
+                    "Modelos no soportado: '%s'. Valores válidos: gemini, ollama".formatted(model));
+        };
     }
 
-    public VectorStore resolveVectorStore(String model){
-        return "ollama".equalsIgnoreCase(model) ? ollamaVectorStore : googleVectorStore;
+    public VectorStore resolveVectorStore(String model) {
+        return switch (normalize(model)) {
+            case "gemini" -> googleVectorStore;
+            case "ollama" -> ollamaVectorStore;
+            default -> throw new IllegalArgumentException(
+                    "Modelo no soportado: '%s'. Valores válidos: gemini, ollama".formatted(model));
+        };
+    }
+
+    /**
+     * Sanea el input del usuario (Sanitization).
+     * Evita NullPointerExceptions y normaliza mayúsculas/espacios (" GEMINI " -> "gemini").
+     */
+    private String normalize(String model){
+        return model == null ? "gemini" : model.strip().toLowerCase();
     }
 }
