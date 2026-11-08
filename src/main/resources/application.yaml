@@ -37,3 +37,10 @@ spring:
                 - "/Users/engercito/Downloads/medassistant/src/main/resources/prompts"
               env:
                 PATH: /usr/local/bin:/Users/engercito/.npm-global/bin:/usr/bin:/bin
+            github:
+              command: /Users/engercito/.npm-global/bin/mcp-server-github
+              args:
+                - ""
+              env:
+                GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
+                PATH: /usr/local/bin:/Users/engercito/.npm-global/bin:/usr/bin:/bin
