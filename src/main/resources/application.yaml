@@ -27,3 +27,13 @@ spring:
         url: http://localhost:8000
 #        collection-name: medassistant
 #        initialize-schema: true
+    mcp:
+      client:
+        stdio:
+          connections:
+            filesystem:
+              command: /Users/engercito/.npm-global/bin/mcp-server-filesystem
+              args:
+                - "/Users/engercito/Downloads/medassistant/src/main/resources/prompts"
+              env:
+                PATH: /usr/local/bin:/Users/engercito/.npm-global/bin:/usr/bin:/bin
