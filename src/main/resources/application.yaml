@@ -44,6 +44,13 @@ spring:
               env:
                 GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
                 PATH: /usr/local/bin:/Users/engercito/.npm-global/bin:/usr/bin:/bin
+            engram:
+              command: /opt/homebrew/bin/engram
+              args:
+                - "mcp"
+              env:
+                HOME: /Users/engercito
+                PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
       server:
         name: medassistant-mcp
         version: 1.0.0
