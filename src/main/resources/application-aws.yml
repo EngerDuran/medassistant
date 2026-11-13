@@ -1,0 +1,53 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.vectorstore.chroma.autoconfigure.ChromaVectorStoreAutoConfiguration
+      - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaChatAutoConfiguration
+      - org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration
+
+  datasource:
+    url: jdbc:postgresql://${RDS_HOST:localhost}:${RDS_PORT:5432}/${RDS_DB:medassistant}
+    username: ${RDS_USERNAME:postgres}
+    password: ${RDS_PASSWORD:postgres}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-aws.sql
+      continue-on-error: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/medassistant}
+
+  ai:
+    google:
+      genai:
+        api-key: ${GOOGLE_AI_API_KEY}
+        chat:
+          options:
+            model: gemini-3.1-flash-lite
+            temperature: 0.2
+            top-p: 0.85
+            max-output-tokens: 2048
+        embedding:
+          api-key: ${GOOGLE_AI_API_KEY}
+          text:
+            model: gemini-embedding-001
+
+    mcp:
+      client:
+        enabled: false
+        stdio:
+          connections: {}
+      server:
+        name: medassistant-mcp
+        version: 1.0.0
+        protocol: STATELESS
