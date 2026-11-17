@@ -1,5 +1,6 @@
 package com.example.medassistant.service;
 
+import com.example.medassistant.dto.IngestionResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.reader.tika.TikaDocumentReader;
@@ -8,6 +9,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +24,7 @@ import java.util.List;
  * en partes más pequeñas y los guarda como vectores para que la IA pueda consultarlos después.
  */
 @Service
+@Profile("!aws")
 @Slf4j
 public class DocumentIngestionServiceImpl implements  DocumentIngestionService {
 
@@ -106,7 +109,7 @@ public class DocumentIngestionServiceImpl implements  DocumentIngestionService {
      * Permite subir literatura médica nueva sin tener que reiniciar la aplicación.
      */
     @Override
-    public String ingestNewDocument(Resource resource) {
+    public IngestionResult ingestNewDocument(Resource resource) {
         List<Document> documents = readDocument(resource);
 
         // Troceamos el PDF en fragmentos de 800 tokens para no saturar
@@ -125,7 +128,6 @@ public class DocumentIngestionServiceImpl implements  DocumentIngestionService {
         googleVectorStore.add(chunks);
         ollamaVectorStore.add(chunks);
 
-        return "Documento '%s' ingerido: %d fragmentos"
-                .formatted(resource.getFilename(), chunks.size());
+        return new IngestionResult(resource.getFilename(),chunks.size());
     }
 }

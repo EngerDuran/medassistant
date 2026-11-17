@@ -1,5 +1,6 @@
 package com.example.medassistant.controller;
 
+import com.example.medassistant.dto.IngestionResult;
 import com.example.medassistant.service.DocumentIngestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +30,7 @@ public class DocumentController {
 
     @PostMapping("/ingest")
     @PreAuthorize("HasRole('ADMIN'")
-    public ResponseEntity<String> ingestDocument(
+    public ResponseEntity<IngestionResult> ingestDocument(
         @RequestParam("file")MultipartFile file
     ){
         return ResponseEntity.ok(documentIngestionService.ingestNewDocument(file.getResource()));
