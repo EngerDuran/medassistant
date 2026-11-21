@@ -1,51 +1,48 @@
 # ==========================================================================
-# Build stage — Maven + JDK 21 para compilar el proyecto
+# Etapa 1: Build — Compilación con Maven y JDK 21 Multi-stage build
 # ==========================================================================
 FROM maven:3.9-eclipse-temurin-21 AS builder
 
 WORKDIR /build
 
-# Primero copiamos solo el pom.xml y descargamos dependencias.
-# Esto aprovecha el cache de Docker: si el pom no cambia entre builds,
-# no se vuelven a descargar las dependencias.
+# Cacheo de capas: copiamos solo el pom.xml primero. Si las dependencias no
+# cambian, Docker reutiliza esta capa y acelera los builds futuros.
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 
-# Ahora copiamos el código fuente y compilamos
+# Copiamos el código fuente y empaquetamos el artefacto final
 COPY src ./src
 RUN mvn clean package -DskipTests -B
 
 # ==========================================================================
-# Runtime stage — solo JRE 21 sobre Ubuntu Jammy
+# Etapa 2: Runtime — Imagen ligera solo con JRE 21 para producción
 # ==========================================================================
 FROM eclipse-temurin:21-jre-jammy
 
-# Timezone: por default los containers arrancan en UTC.
-# Lo seteamos explícitamente para que los logs y LocalDate.now()
-# reflejen la zona horaria correcta.
-ENV TZ=America/Argentina/Buenos_Aires
+# Configuración de zona horaria para sincronizar logs de auditoría
+# y asegurar que LocalDate.now() en los prompts del LLM opere en hora local.
+ENV TZ=Europe/Madrid
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Usuario non-root para correr la app
+# Seguridad: creamos un usuario sin privilegios (non-root) para limitar
+# la superficie de ataque en caso de vulnerabilidad en el contenedor.
 RUN groupadd -r spring && useradd -r -g spring spring
 
 WORKDIR /app
 
-# Copiamos SOLO el jar construido en la etapa anterior.
-# El JDK, Maven, y el código fuente quedan afuera de esta imagen.
+# Copiamos únicamente el .jar compilado desde la etapa anterior, descartando
+# Maven y el código fuente para reducir el peso de la imagen en AWS.
 COPY --from=builder /build/target/*.jar app.jar
 
-# Damos ownership del directorio al usuario non-root
 RUN chown -R spring:spring /app
 
 USER spring
 
-# Profile de producción hardcodeado: esta imagen ES la de producción.
+# Activamos por defecto el perfil de producción configurado para AWS RDS y pgvector
 ENV SPRING_PROFILES_ACTIVE=aws
 
-# Puerto que expone la app (documentación, no publicación automática)
 EXPOSE 8080
 
-# ENTRYPOINT con MaxRAMPercentage para que la JVM se adapte a la
-# memoria del container dinámicamente.
+# Ajustamos la memoria de la JVM al 75% del límite del contenedor para evitar
+# errores OOMKilled out Of Memory en instancias EC2 ajustadas de RAM.
 ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-jar", "app.jar"]
