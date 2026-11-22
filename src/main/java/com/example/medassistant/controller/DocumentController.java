@@ -29,7 +29,7 @@ public class DocumentController {
      */
 
     @PostMapping("/ingest")
-    @PreAuthorize("HasRole('ADMIN'")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<IngestionResult> ingestDocument(
         @RequestParam("file")MultipartFile file
     ){
