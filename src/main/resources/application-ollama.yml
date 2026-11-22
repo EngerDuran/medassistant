@@ -8,3 +8,6 @@ spring:
           temperature: 0.2
           top-p: 0.85
           num-predict: 2048
+      embedding:
+        options:
+          model: nomic-embed-text

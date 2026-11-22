@@ -1,0 +1,24 @@
+# Build outputs
+target/
+*.class
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Git
+.git/
+
+# Local files
+*.log
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (opcional)
+docs/
+README.md

@@ -7,8 +7,8 @@ import com.example.medassistant.dto.analysis.SymptomAnalysis;
 import java.util.List;
 
 public interface AnalysisService {
-    ConditionSummary summarizeCondition(String condition, String model);
-    List<ConditionSummary> ListRelatedConditions(String symptoms, String model);
-    SymptomAnalysis analyzeSymptoms(String symptoms, String model);
-    QueryClassification classifyQuery(String query, String model);
+    ConditionSummary summarizeCondition(String condition, String model, long userId);
+    List<ConditionSummary> ListRelatedConditions(String symptoms, String model, long userId);
+    SymptomAnalysis analyzeSymptoms(String symptoms, String model, long userId);
+    QueryClassification classifyQuery(String query, String model, long userId);
 }

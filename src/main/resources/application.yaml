@@ -1,4 +1,7 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.vectorstore.chroma.autoconfigure.ChromaVectorStoreAutoConfiguration
   application:
     name: medassistant
   datasource:
@@ -13,3 +16,42 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8090/realms/medassistant
+  ai:
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
+    vector-store:
+      chroma:
+        url: http://localhost:8000
+#        collection-name: medassistant
+#        initialize-schema: true
+    mcp:
+      client:
+        stdio:
+          connections:
+            filesystem:
+              command: /Users/engercito/.npm-global/bin/mcp-server-filesystem
+              args:
+                - "/Users/engercito/Downloads/medassistant/src/main/resources/prompts"
+              env:
+                PATH: /usr/local/bin:/Users/engercito/.npm-global/bin:/usr/bin:/bin
+            github:
+              command: /Users/engercito/.npm-global/bin/mcp-server-github
+              args:
+                - ""
+              env:
+                GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
+                PATH: /usr/local/bin:/Users/engercito/.npm-global/bin:/usr/bin:/bin
+            engram:
+              command: /opt/homebrew/bin/engram
+              args:
+                - "mcp"
+              env:
+                HOME: /Users/engercito
+                PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
+      server:
+        name: medassistant-mcp
+        version: 1.0.0
+        protocol: STATELESS
