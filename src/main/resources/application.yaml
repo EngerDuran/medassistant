@@ -32,24 +32,24 @@ spring:
         stdio:
           connections:
             filesystem:
-              command: /Users/engercito/.npm-global/bin/mcp-server-filesystem
+              command: ${user.home}/.npm-global/bin/mcp-server-filesystem
               args:
-                - "/Users/engercito/Downloads/medassistant/src/main/resources/prompts"
+                - "${user.dir}/src/main/resources/prompts"
               env:
-                PATH: /usr/local/bin:/Users/engercito/.npm-global/bin:/usr/bin:/bin
+                PATH: /usr/local/bin:${user.home}/.npm-global/bin:/usr/bin:/bin
             github:
-              command: /Users/engercito/.npm-global/bin/mcp-server-github
+              command: ${user.home}/.npm-global/bin/mcp-server-github
               args:
                 - ""
               env:
                 GITHUB_PERSONAL_ACCESS_TOKEN: ${GITHUB_TOKEN}
-                PATH: /usr/local/bin:/Users/engercito/.npm-global/bin:/usr/bin:/bin
+                PATH: /usr/local/bin:${user.home}/.npm-global/bin:/usr/bin:/bin
             engram:
               command: /opt/homebrew/bin/engram
               args:
                 - "mcp"
               env:
-                HOME: /Users/engercito
+                HOME: ${user.home}
                 PATH: /opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
       server:
         name: medassistant-mcp
