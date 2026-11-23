@@ -1,73 +1,107 @@
-# MedAssistant
+<div align="center">
 
-![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)
-![Spring AI](https://img.shields.io/badge/Spring%20AI-2.0.1-6DB33F?logo=spring&logoColor=white)
+# 🩺 MedAssistant AI
 
-Asistente médico conversacional construido con Spring Boot y Spring AI: chat con memoria, RAG sobre documentos clínicos, tool calling, agentes autónomos, orquestación de workers y soporte MCP (cliente y servidor).
+**Asistente médico conversacional en producción con Spring Boot, Spring AI, RAG, Agentes Autónomos, MCP y AWS**
 
-> **Aviso**: proyecto educativo. La información que genera esta aplicación no sustituye en ningún caso el consejo, diagnóstico o tratamiento de un profesional médico.
+![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![Spring AI](https://img.shields.io/badge/Spring%20AI-2.0.1-6DB33F?style=for-the-badge&logo=spring&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL_17-pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Keycloak](https://img.shields.io/badge/Keycloak-26.2.5-4D4D4D?style=for-the-badge&logo=keycloak&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-EC2_%7C_ECR_%7C_RDS-232F3E?style=for-the-badge&logo=amazonaws&logoColor=white)
 
-## Índice
+</div>
 
-- [Stack](#stack)
-- [Funcionalidades](#funcionalidades)
-- [Arquitectura](#arquitectura)
-- [Cómo funcionan los agentes](#cómo-funcionan-los-agentes)
-- [Flujo RAG](#flujo-rag)
-- [Estructura del proyecto](#estructura-del-proyecto)
-- [Perfiles](#perfiles)
-- [Cómo ejecutarlo en local](#cómo-ejecutarlo-en-local)
-- [Endpoints](#endpoints)
-- [Ejemplos de uso con curl](#ejemplos-de-uso-con-curl)
-- [Decisiones técnicas](#decisiones-técnicas)
-- [Despliegue en AWS](#despliegue-en-aws)
-- [Qué aprendí](#qué-aprendí)
-- [Próximos pasos](#próximos-pasos)
-- [Autor](#autor)
+> ⚠️ **Aviso:** Proyecto educativo y de portfolio técnico. La información generada por esta aplicación no sustituye en ningún caso el consejo, diagnóstico o tratamiento de un profesional médico.
 
-## Stack
+---
 
-| Tecnología | Versión | Uso |
+## 📋 Índice
+
+- [🎯 Descripción del proyecto](#-descripción-del-proyecto)
+- [✨ Funcionalidades](#-funcionalidades)
+- [🛠 Stack tecnológico](#-stack-tecnológico)
+- [🏗 Arquitectura](#-arquitectura)
+- [🤖 Cómo funcionan los agentes](#-cómo-funcionan-los-agentes)
+- [📚 Flujo RAG](#-flujo-rag)
+- [☁️ Despliegue en AWS](#️-despliegue-en-aws)
+- [📁 Estructura del proyecto](#-estructura-del-proyecto)
+- [⚙️ Perfiles y ejecución en local](#️-perfiles-y-ejecución-en-local)
+- [🌐 Endpoints de la API](#-endpoints-de-la-api)
+- [🧪 Ejemplos con curl](#-ejemplos-con-curl)
+- [🧩 Decisiones técnicas](#-decisiones-técnicas)
+- [🧠 Lo que aprendí](#-lo-que-aprendí)
+- [🔮 Próximos pasos](#-próximos-pasos)
+- [👤 Autor](#-autor)
+
+---
+
+## 🎯 Descripción del proyecto
+
+**MedAssistant** es una API REST backend construida con **Java 21**, **Spring Boot** y **Spring AI** que integra capacidades avanzadas de IA generativa en una arquitectura lista para producción:
+
+- **Conversación con memoria persistente** en PostgreSQL y respuestas en tiempo real vía **SSE (Server-Sent Events)**.
+- **RAG (Retrieval-Augmented Generation)** sobre documentación clínica en PDF con **ChromaDB** (local) y **pgvector en AWS RDS** (producción).
+- **Cuatro patrones de agentes** (*Chain + Human-in-the-Loop*, *Routing*, *Orchestrator-Workers* y *Open Agent*).
+- **Soporte MCP (Model Context Protocol)** tanto como **cliente** como **servidor stateless**.
+- **Seguridad OAuth2 / JWT con Keycloak** y despliegue contenerizado en **AWS (EC2, ECR y RDS)**.
+
+---
+
+## ✨ Funcionalidades
+
+### 💬 Chat y Memoria
+- Memoria conversacional con ventana deslizante (`MessageWindowChatMemory`, máximo 9 mensajes) persistida en base de datos vía JDBC.
+- Respuestas síncronas (`POST /api/v1/chat`) y en streaming por SSE (`POST /api/v1/chat/stream`).
+- **Advisor de auditoría (`MedicalAuditAdvisor`):** intercepta llamadas síncronas y streaming para registrar conversación, pregunta, latencia y preview de respuesta sin ensuciar controladores ni servicios.
+
+### 📚 RAG e Ingesta Clínica
+- Ingesta automática e idempotente de 3 PDFs médicos en `src/main/resources/docs` (farmacología del ibuprofeno, guía de hipertensión y protocolo cardiovascular).
+- Recuperación automática mediante `QuestionAnswerAdvisor` (`topK=3`, umbral de similitud `0.7`).
+- Ingesta de nuevos PDFs en caliente sin reiniciar (`POST /api/v1/documents/ingest`, restringido a `ADMIN`).
+
+### 🧰 Tool Calling
+- `getPatientInfo`: consulta el historial clínico validando mediante `ToolContext` que el `userId` del JWT coincide con el `patientId` solicitado.
+- `searchAppointments`: búsqueda de turnos disponibles por especialidad y fecha.
+- `bookAppointment`: reserva de citas con doble barrera de seguridad por rol (`ADMIN`).
+- `searchDoctors`: búsqueda de médicos por apellido o especialidad.
+- `getDrugInfo`: consulta en tiempo real a la API pública **OpenFDA** (con recorte de texto para optimizar la ventana de contexto).
+
+### 🔌 Model Context Protocol (MCP)
+- **Servidor MCP (`medassistant-mcp`, `STATELESS`):** expone las tools `search-doctors` y `search-appointments`, el resource `doctor://{specialty}` y el prompt `symptom-consultation` a clientes externos como Claude Desktop o Cursor.
+- **Cliente MCP (entorno local):** conexiones `stdio` configuradas (`filesystem`, `GitHub`, `engram`) accesibles vía `POST /api/v1/mcp/demo`.
+
+### 🔐 Seguridad OAuth2 + Keycloak
+- API stateless protegida como **OAuth2 Resource Server** con tokens JWT firmados por Keycloak.
+- Traducción defensiva de `realm_access.roles` a authorities de Spring (`ROLE_PATIENT`, `ROLE_ADMIN`).
+- Todos los endpoints `/api/v1/**` exigen rol `PATIENT` o `ADMIN`; `/mcp/**` permanece público.
+
+---
+
+## 🛠 Stack tecnológico
+
+| Área | Tecnología | Versión / Detalle |
 |---|---|---|
-| Java | 21 | Lenguaje base |
-| Spring Boot | 4.1.1 | Framework principal |
-| Spring AI | 2.0.1 (BOM) | Chat, RAG, tools, MCP |
-| Spring Security (OAuth2 Resource Server) | — | JWT con Keycloak |
-| Spring Data JPA | — | Persistencia relacional |
-| PostgreSQL | 17 (Docker) | Base de datos de la app |
-| ChromaDB | imagen `chromadb/chroma` | Vector store en local |
-| pgvector (`pgvector/pgvector:pg17`) | pg17 | Vector store en AWS |
-| Keycloak | 26.2.5 (Docker) | Servidor de identidad |
-| Google GenAI | `gemini-3.1-flash-lite`, `gemini-embedding-001` | LLM y embeddings (perfil `gemini`/`aws`) |
-| Ollama | `llama3.2:3b`, `nomic-embed-text` | LLM y embeddings locales (perfil `ollama`) |
-| Apache Tika (`spring-ai-tika-document-reader`) | — | Extracción de texto de PDFs |
-| Spring AI MCP Client / Server (WebMVC) | — | Integración MCP |
-| Lombok | — | Reducción de boilerplate |
+| **Lenguaje** | Java | 21 |
+| **Framework** | Spring Boot | 4.1.1 |
+| **IA Generativa** | Spring AI (BOM) | 2.0.1 (Chat, RAG, Tools, MCP) |
+| **LLMs & Embeddings** | Google GenAI / Ollama | `gemini-3.1-flash-lite` + `gemini-embedding-001` · `llama3.2:3b` + `nomic-embed-text` |
+| **Seguridad** | Spring Security + Keycloak | OAuth2 Resource Server (JWT) · Keycloak 26.2.5 |
+| **Base de datos** | PostgreSQL + Spring Data JPA | PostgreSQL 17 |
+| **Vector Store** | ChromaDB / pgvector | ChromaDB (local) · `pgvector` en RDS (AWS) |
+| **Procesamiento PDF** | Apache Tika | `spring-ai-tika-document-reader` |
+| **Infraestructura** | Docker & AWS | Docker Compose · ECR · EC2 (Amazon Linux 2023) · RDS |
+| **Utilidades** | Lombok & Maven Wrapper | Reducción de boilerplate y build reproducible |
 
-## Funcionalidades
+---
 
-- **Chat con memoria**: memoria de conversación con ventana deslizante (`MessageWindowChatMemory`, máximo 9 mensajes) persistida vía repositorio JDBC. Respuestas síncronas (`POST /api/v1/chat`) y en streaming por SSE (`POST /api/v1/chat/stream`).
-- **RAG sobre documentos médicos**: ingesta automática de 3 PDFs de `src/main/resources/docs` (farmacología del ibuprofeno, guía de hipertensión, protocolo cardiovascular) y recuperación con `QuestionAnswerAdvisor` (topK=3, umbral de similitud 0.7) contra ChromaDB en local o pgvector en AWS. Ver [Flujo RAG](#flujo-rag).
-- **Ingesta de documentos en caliente**: `POST /api/v1/documents/ingest` permite subir nuevos PDFs al conocimiento RAG sin reiniciar.
-- **Tools (tool calling)**:
-  - `getPatientInfo`: historial clínico, con control de acceso en `ToolContext` (el `userId` inyectado por el backend debe coincidir con el `patientId` solicitado).
-  - `searchAppointments`: búsqueda de turnos disponibles por especialidad y fecha.
-  - `bookAppointment`: reserva de turnos con doble barrera de seguridad por rol (`ADMIN`).
-  - `searchDoctors`: búsqueda de médicos por apellido o especialidad.
-  - `getDrugInfo`: información de medicamentos consultando la API pública OpenFDA (textos recortados para no saturar el contexto del LLM).
-- **Agentes**: cuatro patrones implementados — chain de turnos con Human-in-the-Loop, router por tipo de consulta, Orchestrator-Workers y Open Agent. Ver [Cómo funcionan los agentes](#cómo-funcionan-los-agentes).
-- **MCP**:
-  - **Cliente**: conexiones stdio configuradas (filesystem, GitHub, engram) y endpoint de demo `POST /api/v1/mcp/demo` (no disponible en el perfil `aws`) para conversar con las tools expuestas por servidores MCP externos.
-  - **Servidor**: expone las tools `search-doctors` y `search-appointments`, el resource `doctor://{specialty}` y el prompt `symptom-consultation` a clientes externos (Claude Desktop, Cursor, etc.). Configurado como `medassistant-mcp`, protocolo `STATELESS`.
-- **Seguridad OAuth2 con Keycloak**: API stateless con JWT; los roles de `realm_access.roles` se traducen a authorities de Spring (`ROLE_PATIENT`, `ROLE_ADMIN`). Todo `/api/v1/**` requiere rol `PATIENT` o `ADMIN`; `/mcp/**` es público.
-- **Advisor de auditoría**: `MedicalAuditAdvisor` intercepta cada llamada (síncrona y streaming) y registra en logs la conversación, la pregunta, el tiempo de respuesta y un preview de la respuesta, sin ensuciar controladores ni servicios.
-
-## Arquitectura
+## 🏗 Arquitectura
 
 ```mermaid
 flowchart LR
-    UI[Cliente / Frontend]
+    UI[Cliente / Postman]
     KC[Keycloak]
     MCPEXT[Clientes MCP externos<br/>Claude Desktop · Cursor]
     MCPSTD[Servidores MCP stdio<br/>filesystem · GitHub · engram]
@@ -75,17 +109,17 @@ flowchart LR
     subgraph App[Spring Boot · medassistant]
         SEC[Seguridad JWT<br/>OAuth2 Resource Server]
         CTRL[Controllers REST<br/>/api/v1/**]
-        SVC[Servicios y agentes<br/>chain · routing · orchestrator · open agent]
+        SVC[Servicios y Agentes<br/>Chain · Routing · Orchestrator · Open]
         CC[ChatClient<br/>Gemini / Ollama]
-        AD[Advisors<br/>memoria JDBC · RAG · auditoría]
-        TOOLS[Tools<br/>paciente · turnos · médicos · fármacos]
+        AD[Advisors<br/>Memoria JDBC · RAG · Auditoría]
+        TOOLS[Tools<br/>Paciente · Turnos · Médicos · OpenFDA]
         MCPSRV[Servidor MCP<br/>/mcp/**]
         MCPCLI[Cliente MCP stdio]
         REPO[Repositorios JPA]
     end
 
     LLM[(Gemini / Ollama)]
-    PG[(PostgreSQL)]
+    PG[(PostgreSQL 17)]
     VEC[(ChromaDB / pgvector)]
 
     UI -->|JWT Bearer| SEC
@@ -93,175 +127,216 @@ flowchart LR
     SEC --> CTRL --> SVC --> CC
     CC --- AD
     CC -->|tool calling| TOOLS
-    TOOLS -->|usan servicios de negocio| SVC
+    TOOLS -->|lógica de negocio| SVC
     SVC --> REPO --> PG
-    AD -->|"búsqueda vectorial (RAG)"| VEC
+    AD -->|búsqueda vectorial RAG| VEC
     CC -->|HTTP| LLM
     MCPEXT -->|MCP| MCPSRV --> SVC
     SVC --> MCPCLI -->|stdio| MCPSTD
 ```
 
-En capas: controladores REST → servicios → agentes y tools → `ChatClient` de Spring AI, con la configuración de proveedores resuelta por perfiles (interfaz `ClientResolver` con implementaciones para local y AWS). La persistencia combina PostgreSQL para datos relacionales (pacientes, médicos, turnos, memoria de chat) y un vector store para RAG: ChromaDB en local o pgvector sobre RDS en AWS (en este último caso, pgvector vive en el mismo PostgreSQL). Los prompts viven como plantillas StringTemplate en `src/main/resources/prompts`, desacoplados del código Java, y la misma lógica de negocio se reutiliza para dos mundos: tool calling interno de Spring AI (`@Tool`) y exposición externa vía MCP (`@McpTool`, `@McpResource`, `@McpPrompt`).
+La configuración de proveedores se resuelve por perfiles mediante la interfaz `ClientResolver` (implementaciones separadas para local y AWS). Los prompts están externalizados como plantillas **StringTemplate** en `src/main/resources/prompts`, y la misma lógica de negocio se reutiliza tanto para el tool calling interno (`@Tool`) como para el servidor MCP (`@McpTool`, `@McpResource`, `@McpPrompt`).
 
-## Cómo funcionan los agentes
+---
 
-**1. Cadena de citas (Chain + Human-in-the-Loop)** — `AppointmentChainServiceImpl`
-Pipeline secuencial de 3 pasos con plantillas dedicadas (`appointment-extraction.st`, `appointment-confirmation.st`): extrae especialidad y fecha del texto libre (`AppointmentRequest`), busca huecos disponibles (`AppointmentService.findAvailableAppointments`) y selecciona el mejor turno (`AppointmentSelection`). No escribe todavía en BD: guarda la selección por usuario en `PendingBookingStore` (un `ConcurrentHashMap`). Al confirmar, revalida disponibilidad contra la BD para evitar el doble booking y persiste; también puede cancelarse el turno pendiente.
+## 🤖 Cómo funcionan los agentes
 
-**2. Router por tipo de consulta** — `RoutingWorkFlowServiceImpl`
-`AnalysisService.classifyQuery` clasifica la intención (`QueryClassification`: `SYMPTOM_REPORT`, `GENERAL_QUESTION`, `EMERGENCY`, `PRESCRIPTION_REQUEST`, `OFF_TOPIC`) y un `switch` expression delega en el sub-agente correspondiente, cada uno con su plantilla (`routing-symptom.st`, `routing-general.st`, `routing-emergency.st`, `routing-prescription.st`) y su system prompt. Todas las rutas de LLM pasan por `MedicalAuditAdvisor` y mantienen memoria por `userId`; la ruta `OFF_TOPIC` responde texto fijo sin llamar al modelo (ahorro de tokens y coste).
+| Patrón | Implementación | Cómo opera |
+|---|---|---|
+| **1. Chain + Human-in-the-Loop** | `AppointmentChainServiceImpl` | Pipeline de 3 pasos (`appointment-extraction.st`, `appointment-confirmation.st`): extrae especialidad y fecha, busca huecos reales en BD y guarda la propuesta en `PendingBookingStore` (`ConcurrentHashMap`). Solo persiste tras confirmación explícita revalidando disponibilidad para evitar doble booking. |
+| **2. Router Workflow** | `RoutingWorkFlowServiceImpl` | Clasifica la intención (`SYMPTOM_REPORT`, `GENERAL_QUESTION`, `EMERGENCY`, `PRESCRIPTION_REQUEST`, `OFF_TOPIC`) y delega vía `switch` al sub-agente especializado. Las consultas `OFF_TOPIC` devuelven respuesta fija **sin llamar al LLM** (ahorro de tokens). |
+| **3. Orchestrator-Workers** | `OrchestratorServiceImpl` | **Fan-out** a 3 especialistas: `ClinicalWorker` (razonamiento clínico con LLM), `HistoryWorker` (consulta a BD sin LLM) y `BibliographyWorker` (búsqueda RAG propia). **Fan-in** con síntesis final (`orchestrator-synthesis.st`). Soporta progreso en vivo por SSE usando `Schedulers.boundedElastic()`. |
+| **4. Open Agent** | `OpenAgentServiceImpl` | Agente autónomo con 4 tools (`PatientInfo`, `AppointmentSearch`, `DoctorInfo`, `DrugInfo`). Inyecta la fecha actual en `open-agent.st` para evitar alucinaciones temporales y pasa `userId`/`role` vía `ToolContext` para mitigar *prompt injection*. |
 
-**3. Orchestrator-Workers** — `OrchestratorServiceImpl` + `ClinicalWorker`, `HistoryWorker`, `BibliographyWorker`
-Fan-out a tres especialistas: razonamiento clínico (LLM + `worker-clinical.st`), historial del paciente (consulta a BD, sin LLM) y bibliografía médica (RAG con búsqueda vectorial propia + `worker-bibliography.st`). Fan-in: una síntesis final (`orchestrator-synthesis.st`) integra los tres informes en una única respuesta. La variante `orchestrateWithProgress` emite eventos de progreso por SSE y aísla el trabajo bloqueante en `Schedulers.boundedElastic()` para no bloquear el hilo del servidor.
+---
 
-**4. Open Agent (agente autónomo)** — `OpenAgentServiceImpl`
-Entrega cuatro tools al LLM (`PatientInfoTool`, `AppointmentSearchTool`, `DoctorInfoTool`, `DrugInfoTool`) y le deja decidir cuáles invocar, en qué orden y con qué parámetros. Inyecta la fecha actual en el prompt (`open-agent.st`) para evitar alucinaciones con fechas relativas y pasa `toolContext` con `userId` y `role=PATIENT`; las tools leen la identidad de ahí, nunca del texto del usuario (mitigación de prompt injection).
+## 📚 Flujo RAG
 
-## Flujo RAG
+1. **Ingesta idempotente (`@PostConstruct`):** `DocumentIngestionServiceImpl` (local) o `DocumentIngestionServiceAwsImpl` (AWS) leen los PDFs de `classpath:docs` con `TikaDocumentReader` y los dividen con `TokenTextSplitter` (~800 tokens por chunk, máximo 1000 chunks). Antes de ingestar, comprueban si el vector store ya contiene documentos.
+2. **Embeddings y almacenamiento:**
+    - **Local (ChromaDB):** colecciones separadas `medassistant_google` y `medassistant_ollama` (los espacios vectoriales de distintos modelos no son compatibles entre sí).
+    - **AWS (pgvector):** tabla `medassistant_google` con vectores de 3072 dimensiones dentro del mismo PostgreSQL en RDS.
+3. **Recuperación:** `QuestionAnswerAdvisor` (`topK=3`, similitud `>= 0.7`) enriquece cada chat automáticamente. Adicionalmente, `BibliographyWorker` ejecuta su propia recuperación (`topK=3`, similitud `>= 0.3`) con respuesta *fail-fast* si no encuentra soporte documental.
 
-**1. Ingesta** — al arrancar (`@PostConstruct`), `DocumentIngestionServiceImpl` (perfil distinto de `aws`) o `DocumentIngestionServiceAwsImpl` (perfil `aws`) leen los 3 PDFs de `classpath:docs` con `TikaDocumentReader` y los trocean con `TokenTextSplitter` (chunks de ~800 tokens, máximo 1000 chunks). La ingesta es idempotente: hace una búsqueda previa en el vector store y omite si ya hay documentos. También existe ingesta en caliente vía `POST /api/v1/documents/ingest`.
+---
 
-**2. Embeddings y almacenamiento** — los chunks se convierten en vectores con el `EmbeddingModel` del proveedor configurado y se almacenan en ChromaDB (`ChromaVectorStore`, colecciones separadas `medassistant_google` y `medassistant_ollama` porque los espacios vectoriales de cada proveedor son incompatibles) o en pgvector (`PgVectorStore`, 3072 dimensiones, tabla `medassistant_google`) en AWS.
+## ☁️ Despliegue en AWS
 
-**3. Recuperación** — `QuestionAnswerAdvisor` (topK=3, umbral de similitud 0.7) inyecta contexto clínico de forma transparente en cada chat (`AssistantConfig` / `AssistantConfigAws`). Además, `BibliographyWorker` realiza su propia recuperación durante la orquestación (`searchDocuments`: topK=3, umbral 0.3) con cláusula fail-fast si no hay documentos relevantes.
+```mermaid
+flowchart TB
+    CLIENT[Cliente / Postman] -->|HTTP :8090 / :8080| EIP[Elastic IP Fija]
 
-## Estructura del proyecto
+    subgraph AWS[AWS · Región eu-north-1]
+        EIP --> EC2
 
+        subgraph EC2[EC2 t3.small · Amazon Linux 2023 + Swap]
+            APP[medassistant-app :8080<br/>Spring Boot · perfil aws]
+            KC[medassistant-keycloak :8090<br/>Keycloak 26.2.5]
+            KCDB[(keycloak-db<br/>Postgres 17)]
+            KC --> KCDB
+            APP -.->|valida JWT| KC
+        end
+
+        ECR[(AWS ECR<br/>Imagen linux/amd64)] -->|docker pull vía IAM Role| EC2
+        APP -->|Puerto 5432 · SG privado| RDS[(AWS RDS<br/>PostgreSQL 17 + pgvector)]
+    end
+
+    APP -->|HTTPS| GEMINI[(Google Gemini API)]
 ```
+
+- **Imagen multi-stage (`linux/amd64`):** compilada con Maven/JDK 21 y ejecutada en JRE 21 con usuario no-root y `-XX:MaxRAMPercentage=75.0`, publicada en **Amazon ECR**.
+- **Autenticación sin secretos estáticos:** la instancia EC2 utiliza un **IAM Role** para hacer `docker pull` desde ECR sin almacenar credenciales AWS en disco.
+- **Seguridad de red:** el Security Group de **RDS** solo acepta tráfico en el puerto `5432` procedente del Security Group de la instancia EC2 (sin acceso público).
+- **Gestión de configuración:** secretos (`RDS_PASSWORD`, `GOOGLE_AI_API_KEY`, `RDS_HOST`) inyectados exclusivamente mediante archivo `.env` en el servidor, fuera de la imagen y de Git.
+
+---
+
+## 📁 Estructura del proyecto
+
+```text
 src/main/java/com/example/medassistant
-├── MedassistantApplication.java   # arranque de Spring Boot
-├── agent/                         # patrones de agentes (chain, routing, open agent)
-│   └── orchestrator/              # orquestador y workers (Orchestrator-Workers)
-├── config/                        # seguridad, ChatClients, memoria, auditoría, seeding
-├── controller/                    # API REST (/api/v1/**)
-├── dto/                           # records de entrada/salida
-│   ├── agent/                     # DTOs de la cadena de citas
-│   └── analysis/                  # DTOs del análisis estructurado
-├── exception/                     # manejo global de errores
-├── mcp/                           # servidor MCP: resources y prompts expuestos
-├── model/                         # entidades JPA (Patient, Doctor, Appointment)
-├── repository/                    # repositorios Spring Data JPA
-├── service/                       # lógica de negocio y servicios de IA
-├── tools/                         # herramientas de tool calling (@Tool / @McpTool)
-└── util/                          # utilidades (extracción de roles del JWT)
+├── MedassistantApplication.java   # Punto de entrada Spring Boot
+├── agent/                         # Patrones de agentes (Chain, Routing, Open Agent)
+│   └── orchestrator/              # Orquestador y workers (Clinical, History, Bibliography)
+├── config/                        # Seguridad JWT, ChatClients, Memoria JDBC, Auditoría, Seeding
+├── controller/                    # Controladores REST (/api/v1/**)
+├── dto/                           # Records de entrada/salida (agent, analysis)
+├── exception/                     # Manejo global de excepciones
+├── mcp/                           # Servidor MCP: resources y prompts expuestos
+├── model/                         # Entidades JPA (Patient, Doctor, Appointment)
+├── repository/                    # Repositorios Spring Data JPA
+├── service/                       # Lógica de negocio y servicios de IA
+├── tools/                         # Herramientas (@Tool / @McpTool)
+└── util/                          # Utilidades de seguridad (extracción de roles JWT)
 ```
 
-## Perfiles
+---
 
-| Perfil | Qué hace |
+## ⚙️ Perfiles y ejecución en local
+
+### Perfiles disponibles
+
+| Perfil | Descripción |
 |---|---|
-| Base (sin perfil) | Configura Postgres local, ChromaDB (`localhost:8000`), Keycloak local y las conexiones MCP stdio (filesystem, GitHub, engram). |
+| `default` | PostgreSQL local, ChromaDB (`:8000`), Keycloak (`:8090`) y conexiones MCP `stdio`. |
 | `gemini` | Activa Google GenAI como proveedor de chat y embeddings (requiere `GOOGLE_AI_API_KEY`). |
-| `ollama` | Activa Ollama local (`localhost:11434`) con `llama3.2:3b` y `nomic-embed-text`. |
-| `aws` | Producción: RDS PostgreSQL + pgvector (sustituye Chroma), MCP cliente deshabilitado, autoconfiguración de Ollama/Chroma excluida, esquema de BD vía `schema-aws.sql` (crea la extensión `vector`) y `ddl-auto: update`. Solo admite el modelo `gemini`. |
+| `ollama` | Activa Ollama local (`:11434`) con `llama3.2:3b` y `nomic-embed-text`. |
+| `aws` | Producción: RDS PostgreSQL + `pgvector` (`schema-aws.sql`), excluye Ollama/Chroma y deshabilita cliente MCP. Solo admite `gemini`. |
 
-## Cómo ejecutarlo en local
+### Pasos para arrancar en local
 
-1. **Levanta la infraestructura**:
-
+1. **Levanta la infraestructura con Docker:**
    ```bash
    docker compose up -d
    ```
+   *(Inicia PostgreSQL app `:5432`, PostgreSQL Keycloak `:5433`, Keycloak `:8090` y ChromaDB `:8000`. Credenciales solo para desarrollo).*
 
-   Levanta PostgreSQL de la app (5432), PostgreSQL de Keycloak (5433), Keycloak (8090) y ChromaDB (8000). Las credenciales del compose (`postgres/postgres`, `keycloak/keycloak`, `admin/admin`) son **solo para desarrollo**.
+2. **Configura Keycloak:**
+   Importa `medassistant-realm.json` en `http://localhost:8090` (*Create realm → Browse*). El archivo incluye los roles `PATIENT` y `ADMIN` sin secretos ni usuarios; regenera el *client secret* de `medassistant-client` y crea tus usuarios de prueba.
 
-2. **Prepara Keycloak**: el repositorio incluye `medassistant-realm.json` con la definición del realm (roles `PATIENT` y `ADMIN`). TODO: los pasos de importación no están automatizados en `docker-compose.yml`.
+3. **Configura tus variables de entorno:**
+   ```bash
+   export GOOGLE_AI_API_KEY="tu_api_key_de_gemini"
+   # Opcional (solo si usas el servidor MCP de GitHub en local)
+   export GITHUB_TOKEN="tu_github_token"
+   ```
 
-3. **Opcional (perfil `ollama`)**: instala y arranca Ollama con los modelos configurados; no viene incluido en el compose.
-
-4. **Variables de entorno necesarias** (solo nombres; nunca valores):
-   - `GOOGLE_AI_API_KEY` — perfil `gemini` y `aws`.
-   - `GITHUB_TOKEN` — conexión MCP de GitHub en el entorno local.
-   - Perfil `aws`: `RDS_HOST`, `RDS_PORT`, `RDS_DB`, `RDS_USERNAME`, `RDS_PASSWORD`, `KEYCLOAK_ISSUER_URI`.
-
-5. **Arranca la aplicación**:
-
+4. **Ejecuta la aplicación:**
    ```bash
    SPRING_PROFILES_ACTIVE=gemini ./mvnw spring-boot:run
    ```
+   *(Cambia `gemini` por `ollama` si prefieres ejecutar modelos locales).*
 
-   (o `ollama` en lugar de `gemini`; también válido `-Dspring-boot.run.profiles=gemini`).
+---
 
-   Nota: las conexiones MCP stdio lanzan los binarios locales configurados en `application.yaml`; si no tienes instalados los servidores MCP (filesystem, GitHub, engram), ajusta o deshabilita esas conexiones para ese entorno.
+## 🌐 Endpoints de la API
 
-## Endpoints
+El payload estándar es `{ "prompt": "...", "model": "gemini" | "ollama" }`. El `userId` se extrae siempre del JWT, nunca del cuerpo de la petición.
 
-El cuerpo de los POST es `{ "prompt": "...", "model": "gemini" | "ollama" }` (`ChatRequest`); el `userId` se extrae siempre del token, nunca del body. Reglas de seguridad según `SecurityConfig`: `/api/v1/**` requiere JWT válido con rol `PATIENT` o `ADMIN`; `/mcp/**` es público.
-
-| Método | Ruta | Descripción | Rol / Autenticación |
+### 💬 Chat y Consultas
+| Método | Ruta | Descripción | Acceso |
 |---|---|---|---|
-| POST | `/api/v1/chat` | Chat síncrono con memoria. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/chat/stream` | Chat en streaming SSE. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/chat/explain` | Explica una condición médica con lenguaje accesible. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/chat/symptoms` | Orienta sobre síntomas descritos. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/chat/diagnose` | Razonamiento clínico con chain-of-thought. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/chat/consult` | Consulta médica completa. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/analysis/condition` | Resumen estructurado de una condición (`ConditionSummary`). | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/analysis/conditions` | Lista de condiciones relacionadas con una consulta. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/analysis/symptoms` | Análisis estructurado de síntomas (`SymptomAnalysis`). | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/analysis/classify` | Clasifica la consulta por tipo (`QueryClassification`). | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/documents/ingest` | Sube un PDF (multipart) e ingesta sus chunks en el vector store. | Restringido a `ADMIN` vía `@PreAuthorize("hasRole('ADMIN')")` — TODO: pendiente de verificar en ejecución |
-| POST | `/api/v1/agent/chain/appointment` | Reserva de turno paso a paso (extracción → búsqueda → selección). | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/agent/chain/appointment/confirm` | Confirma el turno pendiente (Human-in-the-Loop, revalida disponibilidad). | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/agent/chain/appointment/cancel` | Descarta el turno pendiente. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/agent/routing` | Router Workflow: clasifica y delega al sub-agente adecuado. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/agent/orchestrator` | Orchestrator-Workers: análisis clínico + historial + bibliografía + síntesis. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/agent/orchestrator/progress` | Igual que el anterior con progreso en vivo por SSE. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/agent/open` | Agente autónomo con tool calling libre. | JWT · `PATIENT` o `ADMIN` |
-| POST | `/api/v1/mcp/demo` | Demo de conversación usando las tools de servidores MCP externos (solo perfil distinto de `aws`). | JWT · `PATIENT` o `ADMIN` |
-| — | `/mcp/**` | Servidor MCP (tools, resources y prompts expuestos a clientes externos). | Público (`permitAll`) |
+| `POST` | `/api/v1/chat` | Chat síncrono con memoria JDBC y RAG | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/chat/stream` | Chat en streaming vía SSE | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/chat/explain` | Explicación accesible de una condición médica | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/chat/symptoms` | Orientación inicial sobre síntomas | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/chat/diagnose` | Razonamiento clínico (*chain-of-thought*) | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/chat/consult` | Consulta médica completa | `PATIENT` / `ADMIN` |
 
-## Ejemplos de uso con curl
+### 🔬 Análisis Estructurado y Documentos
+| Método | Ruta | Descripción | Acceso |
+|---|---|---|---|
+| `POST` | `/api/v1/analysis/condition` | Resumen estructurado (`ConditionSummary`) | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/analysis/conditions` | Lista de condiciones relacionadas | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/analysis/symptoms` | Análisis estructurado (`SymptomAnalysis`) | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/analysis/classify` | Clasificación de intención (`QueryClassification`) | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/documents/ingest` | Ingesta de PDF en caliente (`multipart`) | `ADMIN` |
+
+### 🤖 Agentes y MCP
+| Método | Ruta | Descripción | Acceso |
+|---|---|---|---|
+| `POST` | `/api/v1/agent/chain/appointment` | Propuesta de cita paso a paso (Chain) | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/agent/chain/appointment/confirm` | Confirma cita pendiente (Human-in-the-Loop) | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/agent/chain/appointment/cancel` | Cancela cita pendiente | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/agent/routing` | Router Workflow por intención | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/agent/orchestrator` | Orchestrator-Workers (clínico + historial + RAG) | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/agent/orchestrator/progress` | Orchestrator-Workers con progreso en vivo (SSE) | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/agent/open` | Agente autónomo con tool calling libre | `PATIENT` / `ADMIN` |
+| `POST` | `/api/v1/mcp/demo` | Demo con servidores MCP externos (solo local) | `PATIENT` / `ADMIN` |
+| `—` | `/mcp/**` | Servidor MCP (tools, resources y prompts) | Público (`permitAll`) |
+
+---
+
+## 🧪 Ejemplos con curl
 
 ```bash
-export TOKEN="<JWT emitido por Keycloak>"   # nunca un token real en el repositorio
+export TOKEN="<JWT_EMITIDO_POR_KEYCLOAK>"
 
-# 1) Chat síncrono con memoria
+# 1. Chat síncrono con memoria y RAG
 curl -X POST http://localhost:8080/api/v1/chat \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "¿Qué cuidados debo seguir si tengo hipertensión?", "model": "gemini"}'
 
-# 2) Orchestrator con progreso en vivo (SSE; -N desactiva el buffering)
+# 2. Orchestrator-Workers con progreso en vivo (SSE)
 curl -N -X POST http://localhost:8080/api/v1/agent/orchestrator/progress \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "Dolor torácico opresivo y fatiga al esfuerzo", "model": "gemini"}'
 ```
 
-## Decisiones técnicas
+---
 
-- **Perfiles como estrategia de proveedor**: la interfaz `ClientResolver` abstrae la selección de modelo y vector store; `ClientResolverDefault` (gemini/ollama) y `ClientResolverAws` (solo gemini) permiten la misma lógica de negocio en local y en AWS cambiando solo el perfil activo.
-- **Identidad extraída del JWT, nunca del body**: los controladores reciben el `userId` con `@AuthenticationPrincipal`; `SecurityUtils` extrae el rol de negocio. Las tools reciben `userId` y `role` vía `ToolContext` inyectado por el backend, lo que evita que un prompt malicioso suplante a otro paciente o escale privilegios.
-- **Doble barrera en acciones sensibles**: `bookAppointment` indica en su descripción que es solo para admin y además lo valida por código contra el rol del `ToolContext`.
-- **MCP `STATELESS`**: el servidor MCP (`medassistant-mcp`, v1.0.0) no mantiene sesión entre peticiones, coherente con un transporte WebMVC y una API sin estado.
-- **Conversión de roles Keycloak → Spring**: `realm_access.roles` se traduce a `ROLE_<NOMBRE>` con pattern matching defensivo para evitar `ClassCastException` al deserializar el JSON de roles.
-- **Un `ChatClient` nuevo por petición**: los agentes usan `ChatClient.create(...)` para no compartir estado entre usuarios; los beans de `AssistantConfig` solo definen valores por defecto (system prompt, tools, advisors).
-- **Colecciones vectoriales separadas por proveedor de embeddings**: Gemini y Ollama generan espacios vectoriales incompatibles entre sí; mezclarlos en una misma colección rompería las búsquedas por similitud.
-- **Prompts externalizados** en plantillas StringTemplate (`src/main/resources/prompts`), editables sin recompilar.
-- **Memoria acotada**: ventana de 9 mensajes sobre repositorio JDBC, para limitar tokens y coste manteniendo contexto.
-- **SSE para latencia percibida**: chat y orquestación emiten tokens/eventos en tiempo real, con el trabajo bloqueante aislado en `Schedulers.boundedElastic()`.
-- **Fail-fast en la selección de modelo**: un valor no soportado lanza `IllegalArgumentException` de inmediato; las consultas off-topic se responden sin llamar al LLM.
-- **Contenedor de producción**: Dockerfile multi-stage (build con Maven/JDK 21, runtime solo JRE), usuario no-root y `-XX:MaxRAMPercentage=75.0` para instancias ajustadas de RAM.
+## 🧩 Decisiones técnicas
 
-## Despliegue en AWS
+- **Abstracción por perfiles (`ClientResolver`):** permite cambiar entre local (`gemini`/`ollama` + ChromaDB) y AWS (`gemini` + RDS `pgvector`) sin tocar la lógica de negocio.
+- **Mitigación de Prompt Injection:** la identidad (`userId` y `role`) se extrae siempre del JWT (`@AuthenticationPrincipal`) y se inyecta en `ToolContext`, nunca desde el texto del usuario.
+- **Aislamiento de estado en `ChatClient`:** cada petición de agente instancia su propio `ChatClient.create(...)` para evitar fugas de estado entre usuarios concurrentes.
+- **Prompts desacoplados:** las plantillas StringTemplate (`.st`) permiten iterar y versionar el comportamiento de cada agente sin recompilar código Java.
+- **Optimización de latencia y costes:** ventana de memoria acotada a 9 mensajes, respuesta fija en `OFF_TOPIC` sin invocar al LLM y trabajo bloqueante aislado en `Schedulers.boundedElastic()`.
 
-Verificable en el repositorio:
+---
 
-- **Dockerfile multi-stage**: compilación con `maven:3.9-eclipse-temurin-21` (cacheo de dependencias con `dependency:go-offline`) y runtime ligero `eclipse-temurin:21-jre-jammy`, ejecutando como usuario no-root (`spring`), con TZ `Europe/Madrid`, `SPRING_PROFILES_ACTIVE=aws` por defecto, puerto 8080 y `-XX:MaxRAMPercentage=75.0` (pensado para instancias EC2 ajustadas de RAM).
-- **Perfil `aws`**: RDS PostgreSQL parametrizado por variables `RDS_*`; el vector store pasa de ChromaDB a **pgvector** (`PgVectorStore`, 3072 dimensiones, tabla `medassistant_google`); `schema-aws.sql` crea la extensión `vector`; el cliente MCP stdio queda deshabilitado.
-- **`docker-compose.aws-test.yml`**: permite probar el perfil `aws` en local levantando PostgreSQL con pgvector (puerto 5434) en lugar de RDS.
+## 🧠 Lo que aprendí
 
-TODO (no verificable solo con el código de este repositorio): topología exacta de despliegue (EC2/ECS, balanceador, grupos de seguridad), aprovisionamiento del RDS, pipeline de CI/CD y publicación de imágenes.
+- **La identidad viene del token, nunca del prompt:** inyectar `userId` y roles vía `ToolContext` bloquea intentos de suplantación o escalada de privilegios desde lenguaje natural.
+- **Seguridad con Keycloak + Spring Security:** escribí un `JwtAuthenticationConverter` personalizado para mapear `realm_access.roles` a `ROLE_<NOMBRE>` y corregí un bug sutil en `@PreAuthorize` (`HasRole` mal escrito) en el endpoint de ingesta.
+- **Espacios vectoriales incompatibles:** aprendí por qué Gemini y Ollama necesitan colecciones separadas (`medassistant_google` vs `medassistant_ollama`) al generar embeddings de distintas dimensiones.
+- **ChromaDB en local vs pgvector en AWS:** consolidar datos relacionales y vectores en un único PostgreSQL en RDS reduce complejidad operativa y costes en la nube.
+- **Higiene de secretos en Git:** al exportar un realm de Keycloak comprobé que incluye secretos y hashes; aprendí a usar *Partial export* y a rotar credenciales en lugar de limitarme a borrar el archivo del commit.
 
-## Qué aprendí
+---
 
-> TODO (autor): completar con 3–5 aprendizajes reales de este proyecto.
+## 🔮 Próximos pasos
 
-## Próximos pasos
+- [ ] Automatizar la importación del realm de Keycloak en el `docker-compose.yml` de desarrollo.
+- [ ] Proteger `/mcp/**` con autenticación JWT.
+- [ ] Añadir suite de tests unitarios y de seguridad (JUnit 5, Mockito, Spring Security Test).
+- [ ] Configurar pipeline de CI/CD con GitHub Actions para build y push automático a ECR.
+- [ ] Añadir dominio propio y HTTPS mediante Nginx o Application Load Balancer (ACM) para eliminar `sslRequired=NONE`.
 
-> TODO (autor): completar con los próximos pasos previstos.
+---
 
-## Autor
+## 👤 Autor
 
-**Enger Durán**
+**Enger Durán** · Java Backend Developer (Spring Boot · Spring AI · AWS)
